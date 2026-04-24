@@ -140,24 +140,21 @@ function CollaborationsShowcase() {
   const featuredCollaborations = collaborations.filter(c => c.featured);
   const regularCollaborations = collaborations.filter(c => !c.featured);
 
-
- 
-
   return (
     <>
       {/* Featured Collaborations */}
-      <div className="mb-16 md:mb-24">
+      <div className="mb-12 sm:mb-16 md:mb-24">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="text-center mb-8 md:mb-12"
+          className="text-center mb-6 sm:mb-8 md:mb-12"
         >
           <div className="text-xs md:text-sm tracking-widest text-accent/60 mb-2">FEATURED</div>
-          <h3 className="text-2xl md:text-3xl">Signature Collaborations</h3>
+          <h3 className="text-xl sm:text-2xl md:text-3xl">Signature Collaborations</h3>
         </motion.div>
 
-        <div className="grid md:grid-cols-2 gap-6 md:gap-8 max-w-6xl mx-auto">
+        <div className="grid sm:grid-cols-2 gap-4 sm:gap-6 md:gap-8 max-w-6xl mx-auto">
           {featuredCollaborations.map((collab, index) => (
             <motion.div
               key={collab.name}
@@ -166,9 +163,9 @@ function CollaborationsShowcase() {
               viewport={{ once: true }}
               transition={{ delay: index * 0.1 }}
               onClick={() => setSelectedBrand(collab)}
-              className="group relative cursor-pointer"
+              className="group relative cursor-pointer active:scale-[0.98] transition-transform"
             >
-              <div className="relative overflow-hidden rounded-2xl md:rounded-3xl aspect-[4/3] bg-white/5 border border-white/10 hover:border-accent/50 transition-all duration-500">
+              <div className="relative overflow-hidden rounded-xl sm:rounded-2xl md:rounded-3xl aspect-[4/3] bg-white/5 border border-white/10 hover:border-accent/50 transition-all duration-500">
                 <img
                   src={collab.thumbnail}
                   alt={collab.name}
@@ -177,7 +174,7 @@ function CollaborationsShowcase() {
                 <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent" />
 
                 {/* Logo overlay */}
-                <div className="absolute top-6 left-6 w-16 h-16 md:w-20 md:h-20 bg-white/10 backdrop-blur-xl rounded-xl border border-white/20 flex items-center justify-center p-3">
+                <div className="absolute top-4 left-4 sm:top-6 sm:left-6 w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 bg-white/10 backdrop-blur-xl rounded-lg sm:rounded-xl border border-white/20 flex items-center justify-center p-2 sm:p-3">
                   <img
                     src={collab.logo}
                     alt={collab.name}
@@ -186,21 +183,21 @@ function CollaborationsShowcase() {
                 </div>
 
                 {/* Content */}
-                <div className="absolute bottom-0 left-0 right-0 p-6 md:p-8">
-                  <div className="flex items-center gap-2 mb-3">
-                    <span className="px-3 py-1 rounded-full bg-accent/20 text-accent text-xs backdrop-blur-sm border border-accent/30">
+                <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-6 md:p-8">
+                  <div className="flex items-center gap-2 mb-2 sm:mb-3">
+                    <span className="px-2 sm:px-3 py-1 rounded-full bg-accent/20 text-accent text-[10px] sm:text-xs backdrop-blur-sm border border-accent/30">
                       {collab.category}
                     </span>
                   </div>
-                  <h4 className="text-xl md:text-2xl mb-2">{collab.name}</h4>
-                  <p className="text-sm md:text-base opacity-80 mb-3">{collab.description}</p>
-                  <p className="text-xs md:text-sm opacity-60">{collab.outcome}</p>
+                  <h4 className="text-lg sm:text-xl md:text-2xl mb-1 sm:mb-2">{collab.name}</h4>
+                  <p className="text-xs sm:text-sm md:text-base opacity-80 mb-2 sm:mb-3 line-clamp-2">{collab.description}</p>
+                  <p className="text-[10px] sm:text-xs md:text-sm opacity-60 line-clamp-2">{collab.outcome}</p>
 
                   {/* Hover indicator */}
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     whileHover={{ opacity: 1, y: 0 }}
-                    className="flex items-center gap-2 mt-4 text-accent text-sm hidden md:flex"
+                    className="flex items-center gap-2 mt-3 sm:mt-4 text-accent text-xs sm:text-sm hidden md:flex"
                   >
                     <span>View Details</span>
                     <ArrowRight className="w-4 h-4" />
@@ -218,14 +215,14 @@ function CollaborationsShowcase() {
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="text-center mb-8 md:mb-12"
+          className="text-center mb-6 sm:mb-8 md:mb-12"
         >
-          <h3 className="text-2xl md:text-3xl mb-3">All Collaborations</h3>
-          <p className="text-sm md:text-base opacity-60">Hover or tap to explore each story</p>
+          <h3 className="text-xl sm:text-2xl md:text-3xl mb-2 sm:mb-3">All Collaborations</h3>
+          <p className="text-xs sm:text-sm md:text-base opacity-60">Hover or tap to explore each story</p>
         </motion.div>
 
         {/* Desktop Grid */}
-        <div className="hidden md:grid md:grid-cols-4 lg:grid-cols-5 gap-6 md:gap-8">
+        <div className="hidden md:grid md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6 lg:gap-8">
           {regularCollaborations.map((collab, index) => (
             <motion.div
               key={collab.name}
@@ -237,27 +234,27 @@ function CollaborationsShowcase() {
               onClick={() => setSelectedBrand(collab)}
               className="group relative cursor-pointer"
             >
-              <div className="relative overflow-hidden rounded-2xl aspect-square bg-white/5 border border-white/10 hover:border-accent/50 transition-all duration-500 p-6 flex items-center justify-center">
+              <div className="relative overflow-hidden rounded-xl md:rounded-2xl aspect-square bg-white/5 border border-white/10 hover:border-accent/50 transition-all duration-500 p-4 md:p-6 flex items-center justify-center">
                 {/* Logo */}
                 <img
                   src={collab.logo}
                   alt={collab.name}
-                  className="w-full h-20 object-contain grayscale opacity-40 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-500"
+                  className="w-full h-16 md:h-20 object-contain grayscale opacity-40 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-500"
                 />
 
                 {/* Hover Overlay */}
                 <div className="absolute inset-0 bg-gradient-to-t from-accent/20 via-accent/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
                 {/* Category Badge */}
-                <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                <div className="absolute top-2 right-2 md:top-3 md:right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
                   <span className="px-2 py-1 rounded-full bg-accent/20 text-accent text-[10px] backdrop-blur-sm border border-accent/30">
                     {collab.category}
                   </span>
                 </div>
 
                 {/* Name on hover */}
-                <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500">
-                  <p className="text-sm text-center">{collab.name}</p>
+                <div className="absolute bottom-0 left-0 right-0 p-3 md:p-4 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                  <p className="text-xs md:text-sm text-center">{collab.name}</p>
                 </div>
               </div>
             </motion.div>
@@ -265,9 +262,9 @@ function CollaborationsShowcase() {
         </div>
 
         {/* Mobile Swipeable Cards */}
-        <div className="md:hidden">
+        <div className="md:hidden relative">
           <div
-            className="relative flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide px-4 -mx-4"
+            className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide px-4 -mx-4"
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
@@ -280,9 +277,9 @@ function CollaborationsShowcase() {
                 viewport={{ once: true }}
                 transition={{ delay: index * 0.05 }}
                 onClick={() => setSelectedBrand(collab)}
-                className="flex-shrink-0 snap-center w-[280px]"
+                className="flex-shrink-0 snap-center w-[240px] sm:w-[280px]"
               >
-                <div className="relative overflow-hidden rounded-2xl aspect-[3/4] bg-white/5 border border-white/10">
+                <div className="relative overflow-hidden rounded-2xl aspect-[3/4] bg-white/5 border border-white/10 active:border-accent/50 transition-colors">
                   <img
                     src={collab.thumbnail}
                     alt={collab.name}
@@ -300,11 +297,11 @@ function CollaborationsShowcase() {
                   </div>
 
                   {/* Content */}
-                  <div className="absolute bottom-0 left-0 right-0 p-5">
+                  <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-5">
                     <span className="inline-block px-2 py-1 rounded-full bg-accent/20 text-accent text-xs backdrop-blur-sm border border-accent/30 mb-2">
                       {collab.category}
                     </span>
-                    <h4 className="text-lg mb-2">{collab.name}</h4>
+                    <h4 className="text-base sm:text-lg mb-2">{collab.name}</h4>
                     <p className="text-xs opacity-70 line-clamp-2">{collab.description}</p>
                   </div>
                 </div>
@@ -313,8 +310,8 @@ function CollaborationsShowcase() {
           </div>
 
           {/* Scroll Gradient Overlays */}
-          <div className="absolute left-0 top-0 bottom-4 w-8 bg-gradient-to-r from-background to-transparent pointer-events-none" />
-          <div className="absolute right-0 top-0 bottom-4 w-8 bg-gradient-to-l from-background to-transparent pointer-events-none" />
+          <div className="absolute left-0 top-0 bottom-4 w-4 sm:w-8 bg-gradient-to-r from-background to-transparent pointer-events-none" />
+          <div className="absolute right-0 top-0 bottom-4 w-4 sm:w-8 bg-gradient-to-l from-background to-transparent pointer-events-none" />
         </div>
       </div>
 
@@ -326,7 +323,7 @@ function CollaborationsShowcase() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setSelectedBrand(null)}
-            className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4"
+            className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 md:p-6"
           >
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
@@ -334,19 +331,19 @@ function CollaborationsShowcase() {
               exit={{ scale: 0.9, opacity: 0 }}
               transition={{ type: "spring", damping: 25 }}
               onClick={(e) => e.stopPropagation()}
-              className="relative max-w-4xl w-full bg-background/95 backdrop-blur-xl rounded-3xl overflow-hidden border border-white/10 shadow-2xl"
+              className="relative max-w-4xl w-full bg-background/95 backdrop-blur-xl rounded-2xl sm:rounded-3xl overflow-hidden border border-white/10 shadow-2xl max-h-[90vh] overflow-y-auto"
             >
               {/* Close Button */}
               <button
                 onClick={() => setSelectedBrand(null)}
-                className="absolute top-4 right-4 md:top-6 md:right-6 z-10 w-10 h-10 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 flex items-center justify-center hover:bg-white/20 transition-colors"
+                className="absolute top-3 right-3 sm:top-4 sm:right-4 md:top-6 md:right-6 z-10 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 flex items-center justify-center hover:bg-white/20 transition-colors"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4 sm:w-5 sm:h-5" />
               </button>
 
               <div className="grid md:grid-cols-2 gap-0">
                 {/* Image */}
-                <div className="relative aspect-[4/3] md:aspect-auto overflow-hidden">
+                <div className="relative aspect-[4/3] md:aspect-auto md:min-h-[400px] overflow-hidden">
                   <img
                     src={selectedBrand.thumbnail}
                     alt={selectedBrand.name}
@@ -356,9 +353,9 @@ function CollaborationsShowcase() {
                 </div>
 
                 {/* Content */}
-                <div className="p-8 md:p-12 flex flex-col justify-center">
+                <div className="p-6 sm:p-8 md:p-12 flex flex-col justify-center">
                   {/* Logo */}
-                  <div className="w-20 h-20 md:w-24 md:h-24 bg-white/5 backdrop-blur-xl rounded-2xl border border-white/10 flex items-center justify-center p-4 mb-6">
+                  <div className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 bg-white/5 backdrop-blur-xl rounded-xl sm:rounded-2xl border border-white/10 flex items-center justify-center p-3 sm:p-4 mb-4 sm:mb-6">
                     <img
                       src={selectedBrand.logo}
                       alt={selectedBrand.name}
@@ -367,26 +364,26 @@ function CollaborationsShowcase() {
                   </div>
 
                   {/* Category */}
-                  <span className="inline-block px-3 py-1.5 rounded-full bg-accent/20 text-accent text-xs backdrop-blur-sm border border-accent/30 mb-4 w-fit">
+                  <span className="inline-block px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full bg-accent/20 text-accent text-[10px] sm:text-xs backdrop-blur-sm border border-accent/30 mb-3 sm:mb-4 w-fit">
                     {selectedBrand.category}
                   </span>
 
                   {/* Name */}
-                  <h3 className="text-3xl md:text-4xl mb-4">{selectedBrand.name}</h3>
+                  <h3 className="text-2xl sm:text-3xl md:text-4xl mb-3 sm:mb-4">{selectedBrand.name}</h3>
 
                   {/* Description */}
-                  <p className="text-lg md:text-xl opacity-80 mb-6">{selectedBrand.description}</p>
+                  <p className="text-base sm:text-lg md:text-xl opacity-80 mb-4 sm:mb-6">{selectedBrand.description}</p>
 
                   {/* Outcome */}
-                  <div className="bg-white/5 border border-white/10 rounded-2xl p-6 mb-6">
-                    <div className="text-xs tracking-widest text-accent mb-2">OUTCOME</div>
-                    <p className="text-sm md:text-base opacity-90">{selectedBrand.outcome}</p>
+                  <div className="bg-white/5 border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6 mb-4 sm:mb-6">
+                    <div className="text-[10px] sm:text-xs tracking-widest text-accent mb-1.5 sm:mb-2">OUTCOME</div>
+                    <p className="text-xs sm:text-sm md:text-base opacity-90">{selectedBrand.outcome}</p>
                   </div>
 
                   {/* CTA */}
-                  <button className="flex items-center gap-2 text-accent text-sm hover:gap-3 transition-all">
+                  <button className="flex items-center gap-2 text-accent text-xs sm:text-sm hover:gap-3 transition-all">
                     <span>View Full Case Study</span>
-                    <ExternalLink className="w-4 h-4" />
+                    <ExternalLink className="w-3 h-3 sm:w-4 sm:h-4" />
                   </button>
                 </div>
               </div>
@@ -397,6 +394,7 @@ function CollaborationsShowcase() {
     </>
   );
 }
+
 
 export default function Home() {
   const heroRef = useRef<HTMLDivElement>(null);
