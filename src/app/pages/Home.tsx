@@ -3,6 +3,10 @@ import { Camera, Video, User, ArrowRight, Check, X, ExternalLink } from "lucide-
 import { useRef, useState, useEffect } from "react";
 import { Link } from "react-router";
 import { attachPreviewUrls, getHomepagemages } from "../../Apicalls/Apicalls";
+import HeroSlide1 from '../../assets/IMG_1495(1).jpg'
+import HeroSlide2 from '../../assets/IMG_1501(1).jpeg'
+import HeroSlide3 from '../../assets/IMG_5048(1).jpg'
+
 
 type Collaboration = {
   name: string;
@@ -13,6 +17,32 @@ type Collaboration = {
   thumbnail: string;
   featured?: boolean;
 };
+
+function PortfolioSkeleton() {
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-6">
+      {Array.from({ length: 6 }).map((_, index) => (
+        <motion.div
+          key={index}
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: index * 0.05 }}
+          className="relative aspect-[3/4] overflow-hidden rounded-xl md:rounded-2xl bg-white/5 border border-white/10"
+        >
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-black/10 to-transparent animate-shimmer" />
+
+          {/* Content placeholders */}
+          <div className="absolute inset-0 flex items-end p-4 md:p-8">
+            <div className="w-full space-y-2">
+              <div className="h-3 w-16 bg-white/10 rounded-full" />
+              <div className="h-4 w-3/4 bg-white/10 rounded" />
+            </div>
+          </div>
+        </motion.div>
+      ))}
+    </div>
+  );
+}
 
 const collaborations: Collaboration[] = [
   {
@@ -413,7 +443,7 @@ export default function Home() {
   const [selectedPortfolioItem, setSelectedPortfolioItem] = useState<typeof portfolioItems[0] | null>(null);
 
   useEffect(() => {
-    if (selectedPortfolioItem?.type === "video" && videoRef.current) {
+    if (selectedPortfolioItem?.media_type === "video" && videoRef.current) {
       const playPromise = videoRef.current.play();
       if (playPromise !== undefined) {
         playPromise.catch((error) => {
@@ -425,17 +455,17 @@ export default function Home() {
 
   const heroSlides = [
     {
-      image: "https://images.unsplash.com/photo-1762028895381-e479626a4fa6?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjaW5lbWF0aWMlMjBmaWxtJTIwcHJvZHVjdGlvbiUyMGNhbWVyYSUyMGVxdWlwbWVudCUyMHN0dWRpb3xlbnwxfHx8fDE3NzYyNjg1ODJ8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      image: HeroSlide1,
       title: "Crafting Visual Stories That Don't Fade",
       description: "Premium creative production for brands and individuals who demand excellence."
     },
     {
-      image: "https://images.unsplash.com/photo-1758613653843-87c253aea8cd?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHw0fHxwcm9mZXNzaW9uYWwlMjBwaG90b2dyYXBoeSUyMHN0dWRpbyUyMGVxdWlwbWVudHxlbnwxfHx8fDE3NzU5NDczMDV8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      image: HeroSlide2,
       title: "Where Process Meets Artistry",
       description: "Structured workflows that deliver cinematic quality, every single time."
     },
     {
-      image: "https://images.unsplash.com/photo-1646105659698-1389145bf6a0?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxmYXNoaW9uJTIwbW9kZWwlMjBlZGl0b3JpYWwlMjBwb3J0cmFpdCUyMHN0dWRpb3xlbnwxfHx8fDE3NzU5NDczMDR8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      image: HeroSlide3,
       title: "Editorial Precision, Creative Vision",
       description: "Modeling portfolios and brand campaigns that capture authentic presence."
     }
@@ -469,7 +499,7 @@ export default function Home() {
   const [portfolioItems,setportfolioItems] = useState([])
   const [page,setpage] = useState(1)
   const [totalpage,settotalpage] = useState(1)
-
+  const [pageLoading,setpageloading] = useState(false)
 
 const cacheRef = useRef({});
 
@@ -477,6 +507,8 @@ useEffect(() => {
   const fetchImages = async () => {
     const key = `${activeFilter}-${page}`;
     const cache = cacheRef.current;
+
+    setpageloading(true)
 
     // ✅ Use cache
     if (cache[key]) {
@@ -504,6 +536,8 @@ useEffect(() => {
     } else {
       setportfolioItems(prev => [...prev, ...urls]);
     }
+
+    setpageloading(false)
   };
 
   fetchImages();
@@ -720,7 +754,11 @@ setportfolioItems([]);
             </div>
           </motion.div>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-6">
+          {
+            pageLoading? 
+          <PortfolioSkeleton/>
+            :
+             <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-6">
             {displayedPortfolio.map((item, index) => (
               <motion.div
                 key={index}
@@ -763,6 +801,9 @@ setportfolioItems([]);
               </motion.div>
             ))}
           </div>
+          }
+          
+         
 
           {totalpage > 1 && (
             <motion.div
