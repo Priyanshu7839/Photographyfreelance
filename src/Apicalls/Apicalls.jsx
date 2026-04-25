@@ -2,8 +2,7 @@ import axios from 'axios'
 
 
 const api = axios.create({
-  // baseURL:
-    "https://photographyfreelancebackend.onrender.com",
+  baseURL:"https://photographyfreelancebackend.onrender.com",
   //  baseURL: "http://localhost:8002",
 });
 
