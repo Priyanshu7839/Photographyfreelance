@@ -1,7 +1,7 @@
 import { motion, AnimatePresence } from "motion/react";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
-import { Camera, Video, User, ArrowRight, ArrowLeft, Check } from "lucide-react";
+import { Camera, Video, User, ArrowRight, ArrowLeft, Check, TrendingUp } from "lucide-react";
 import { sendenquiry } from "../../Apicalls/Apicalls";
 
 type FormData = {
@@ -73,7 +73,8 @@ export default function BookingPage() {
   const projectTypes = [
     { icon: Camera, title: "Photography", description: "Editorial, commercial, and lifestyle photography" },
     { icon: Video, title: "Videography", description: "Cinematic storytelling and brand films" },
-    { icon: User, title: "Modeling Portfolio", description: "Professional portfolio development" }
+    { icon: User, title: "Modeling Portfolio", description: "Professional portfolio development" },
+     { icon: TrendingUp, title: "Digital Marketing", description: "Strategic campaigns and social media management" }
   ];
 
   const budgetRanges = [

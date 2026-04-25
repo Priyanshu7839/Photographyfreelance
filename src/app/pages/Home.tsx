@@ -1,5 +1,5 @@
 import { motion, useScroll, useTransform, AnimatePresence } from "motion/react";
-import { Camera, Video, User, ArrowRight, Check, X, ExternalLink } from "lucide-react";
+import { Camera, Video, User, ArrowRight, Check, X, ExternalLink, TrendingUp, Phone, Mail } from "lucide-react";
 import { useRef, useState, useEffect } from "react";
 import { Link } from "react-router";
 import { attachPreviewUrls, getHomepagemages } from "../../Apicalls/Apicalls";
@@ -11,6 +11,12 @@ import HeroSlide3 from '../../assets/IMG_5048(1).jpg'
 import HeroSlideMobile1 from '../../assets/IMG_0289.jpeg'
 import HeroSlideMobile2 from '../../assets/IMG_8243.jpg'
 import HeroSlideMobile3 from '../../assets/IMG_8592.jpg'
+import TestimonialCarousel3D from "../components/ui/TestimonialCarousel3D";
+
+import Brand1 from '../../assets/Rajmahal.jpeg'
+import Brand2 from '../../assets/RecoLogo.png'
+import Brand3 from '../../assets/Rently logo.png'
+import Brand4 from '../../assets/super8.png'
 
 
 
@@ -505,6 +511,11 @@ const isMobile = window.matchMedia("(max-width: 600px)").matches;
       icon: User,
       title: "Modeling Portfolios",
       description: "Professional portfolio development that elevates careers and captures authentic presence."
+    },
+    {
+      icon: TrendingUp,
+      title: "Digital Marketing",
+      description: "Strategic digital campaigns and brand growth through targeted marketing and social media management."
     }
   ];
 
@@ -710,7 +721,7 @@ useEffect(() => {
           </motion.div>
 
           <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-8">
-            {services.map((service, index) => (
+            {services.slice(0, 3).map((service, index) => (
               <motion.div
                 key={service.title}
                 initial={{ opacity: 0, y: 40 }}
@@ -728,6 +739,24 @@ useEffect(() => {
               </motion.div>
             ))}
           </div>
+
+          {/* Digital Marketing - Centered on second row */}
+          <div className="flex justify-center mt-4 md:mt-8">
+            <motion.div
+              initial={{ opacity: 0, y: 40 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.6 }}
+              whileHover={{ y: -8 }}
+              className="group cursor-pointer w-full sm:w-[calc(50%-0.5rem)] md:w-[calc(33.333%-1.333rem)] max-w-md"
+            >
+              <div className="border border-white/10 p-8 md:p-12 hover:border-accent/50 transition-all duration-500 h-full rounded-2xl md:rounded-3xl">
+                <TrendingUp className="w-10 h-10 md:w-12 md:h-12 mb-6 md:mb-8 text-accent" strokeWidth={1.5} />
+                <h3 className="text-xl md:text-2xl mb-3 md:mb-4">{services[3].title}</h3>
+                <p className="opacity-70 leading-relaxed text-sm md:text-base">{services[3].description}</p>
+              </div>
+            </motion.div>
+          </div>
         </div>
       </section>
 
@@ -741,10 +770,10 @@ useEffect(() => {
             className="mb-12 md:mb-20"
           >
             <div className="text-xs md:text-sm tracking-widest text-accent mb-3 md:mb-4">SELECTED WORK</div>
-            <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-6">
+            <div className="flex flex-col  items-start justify-between gap-6">
               <h2 className="text-3xl sm:text-4xl md:text-5xl">Portfolio</h2>
               <div className="flex gap-2 md:gap-4 flex-wrap">
-                {["All", "Modelling", "Events", "Marketing"].map((filter) => (
+                {["All", "Modelling", "Events", "Marketing",'Maternity','Models','Graduation','Motels','Classical Dance','House Warming','Kids Bday'].map((filter) => (
                   <button
                     key={filter}
                     onClick={() => {
@@ -1014,115 +1043,100 @@ setportfolioItems([]);
         </div>
       </section>
 
-      {/* Testimonials */}
+       {/* Testimonials - 3D Carousel */}
+      <section className="py-16 md:py-24 lg:py-32 px-4 md:px-6 bg-secondary/30 overflow-hidden">
+        <div className="max-w-7xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mb-8 md:mb-12"
+          >
+            <div className="text-xs md:text-sm tracking-widest text-accent mb-3 md:mb-4">CLIENT FEEDBACK</div>
+            <h2 className="text-3xl sm:text-4xl md:text-5xl mb-3 md:mb-4">What Our Clients Say</h2>
+            <p className="text-sm md:text-base opacity-60 max-w-2xl mx-auto">
+              Real experiences from those who trusted us with their vision
+            </p>
+          </motion.div>
+
+          <TestimonialCarousel3D />
+        </div>
+      </section>
+
+        {/* Trusted Brands */}
       <section className="py-16 md:py-24 lg:py-32 px-4 md:px-6 bg-secondary/30">
-        <div className="max-w-5xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 40 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center"
-          >
-            <div className="text-xs md:text-sm tracking-widest text-accent mb-8 md:mb-12">CLIENT FEEDBACK</div>
-            <div className="grid sm:grid-cols-2 gap-6 md:gap-12">
-              <div className="border border-white/10 p-6 md:p-12 rounded-2xl md:rounded-3xl">
-                <p className="text-base md:text-xl mb-6 md:mb-8 leading-relaxed opacity-90">
-                  "The process was seamless from start to finish. Midori Media delivered exactly what we envisioned—with a level of professionalism that's rare to find."
-                </p>
-                <div className="text-xs md:text-sm opacity-60">— Sarah Chen, Brand Director</div>
+        <div className="max-w-7xl mx-auto">
+          <div className="grid md:grid-cols-2 gap-8 md:gap-12 lg:gap-16 items-center">
+            {/* Left - Text */}
+            <motion.div
+              initial={{ opacity: 0, x: -40 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+            >
+              <div className="text-xs md:text-sm tracking-widest text-accent mb-3 md:mb-4">PARTNERSHIPS</div>
+              <h2 className="text-3xl sm:text-4xl md:text-5xl mb-4 md:mb-6">Trusted by Leading Brands</h2>
+              <p className="text-base md:text-lg opacity-70 leading-relaxed mb-6 md:mb-8">
+                We've had the privilege of collaborating with renowned brands and luxury establishments across the globe, delivering exceptional visual content that elevates their stories.
+              </p>
+
+              {/* Stats */}
+              <div className="grid grid-cols-3 gap-4 md:gap-6">
+                {[
+                  { number: "150+", label: "Projects" },
+                  { number: "20+", label: "Cities" },
+                  { number: "5", label: "Countries" }
+                ].map((stat, index) => (
+                  <motion.div
+                    key={stat.label}
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: 0.1 * index }}
+                    className="text-center md:text-left"
+                  >
+                    <div className="text-2xl md:text-3xl lg:text-4xl text-accent mb-1">{stat.number}</div>
+                    <div className="text-xs md:text-sm opacity-60">{stat.label}</div>
+                  </motion.div>
+                ))}
               </div>
-              <div className="border border-white/10 p-6 md:p-12 rounded-2xl md:rounded-3xl">
-                <p className="text-base md:text-xl mb-6 md:mb-8 leading-relaxed opacity-90">
-                  "They didn't just take photos—they captured the essence of our campaign. The attention to detail and creative direction was outstanding."
-                </p>
-                <div className="text-xs md:text-sm opacity-60">— Marcus Johnson, Creative Lead</div>
+            </motion.div>
+
+            {/* Right - Logo Grid */}
+            <motion.div
+              initial={{ opacity: 0, x: 40 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              className="border border-white/10 rounded-2xl md:rounded-3xl p-6 md:p-8 lg:p-12 bg-white/5 backdrop-blur-sm"
+            >
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-6 md:gap-8">
+                {[
+                  { name: "Rajmahal", logo: Brand1 },
+                  { name: "Reco", logo: Brand2 },
+                  { name: "Rently", logo: Brand3 },
+                  { name: "Super8", logo: Brand4 },
+                  
+                ].map((brand, index) => (
+                  <motion.div
+                    key={brand.name}
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    whileInView={{ opacity: 1, scale: 1 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: index * 0.05 }}
+                    className="flex items-center justify-center p-3 md:p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-accent/30 transition-all duration-300 group"
+                  >
+                    <img
+                      src={brand.logo}
+                      alt={brand.name}
+                      className="w-full h-10 md:h-12 rounded-md object-fit  transition-all duration-300"
+                    />
+                  </motion.div>
+                ))}
               </div>
-            </div>
-          </motion.div>
+            </motion.div>
+          </div>
         </div>
       </section>
 
-      {/* Collaborations That Define Our Craft */}
-      <section className="relative py-24 md:py-32 lg:py-40 px-4 md:px-6 overflow-hidden bg-gradient-to-b from-background via-secondary/20 to-background">
-        {/* Background Effects */}
-        <div className="absolute inset-0 opacity-30">
-          <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-accent/10 rounded-full blur-[120px]" />
-          <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-accent/10 rounded-full blur-[120px]" />
-        </div>
-
-        <div className="relative z-10 max-w-7xl mx-auto">
-          {/* Header */}
-          <motion.div
-            initial={{ opacity: 0, y: 40 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center mb-16 md:mb-20"
-          >
-            <div className="text-xs md:text-sm tracking-widest text-accent mb-4 md:mb-6 uppercase">Collaborations That Define Our Craft</div>
-            <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl mb-6 md:mb-8 leading-tight max-w-4xl mx-auto">
-              From Intimate Weddings to Large-Scale Productions
-            </h2>
-
-            {/* Dynamic Stats Counter */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.2 }}
-              className="flex flex-wrap justify-center gap-6 md:gap-12 mb-12 md:mb-16"
-            >
-              {[
-                { number: "150+", label: "Weddings" },
-                { number: "20+", label: "Cities" },
-                { number: "5", label: "Countries" }
-              ].map((stat, index) => (
-                <motion.div
-                  key={stat.label}
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  whileInView={{ opacity: 1, scale: 1 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: 0.3 + index * 0.1 }}
-                  className="text-center"
-                >
-                  <div className="text-3xl md:text-4xl lg:text-5xl text-accent mb-2">{stat.number}</div>
-                  <div className="text-xs md:text-sm opacity-60 tracking-widest uppercase">{stat.label}</div>
-                </motion.div>
-              ))}
-            </motion.div>
-
-            {/* Category Filters */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.4 }}
-              className="flex flex-wrap justify-center gap-3"
-            >
-              {["All", "Luxury", "Destination", "Celebrity", "Corporate"].map((filter) => (
-                <button
-                  key={filter}
-                  onClick={() => setActiveFilter(filter)}
-                  className={`px-4 md:px-6 py-2 md:py-2.5 rounded-full text-xs md:text-sm transition-all ${
-                    activeFilter === filter
-                      ? "bg-accent text-background"
-                      : "bg-white/5 border border-white/10 hover:bg-white/10 hover:border-accent/30"
-                  }`}
-                >
-                  {filter}
-                </button>
-              ))}
-            </motion.div>
-          </motion.div>
-
-          {/* Interactive Brand Showcase */}
-          <CollaborationsShowcase />
-        </div>
-
-        {/* Subtle Divider */}
-        <div className="max-w-7xl mx-auto mt-20 md:mt-32">
-          <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
-        </div>
-      </section>
 
       {/* Strong Closing CTA */}
       <section className="relative py-24 md:py-32 lg:py-40 px-4 md:px-6 overflow-hidden">
@@ -1158,7 +1172,17 @@ setportfolioItems([]);
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12 mb-8 md:mb-12">
             <div className="col-span-2 md:col-span-1">
               <div className="text-xl md:text-2xl mb-3 md:mb-4">Midori Media</div>
-              <p className="text-xs md:text-sm opacity-60">Premium creative production</p>
+              <p className="text-xs md:text-sm opacity-60 mb-4">Premium creative production</p>
+              <div className="space-y-2">
+                <a href="tel:+15551234567" className="flex items-center gap-2 text-xs md:text-sm opacity-70 hover:opacity-100 hover:text-accent transition-all group">
+                  <Phone className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                  <span>+1 (816) 768-1721</span>
+                </a>
+                <a href="mailto:hello@midorimedia.com" className="flex items-center gap-2 text-xs md:text-sm opacity-70 hover:opacity-100 hover:text-accent transition-all group">
+                  <Mail className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                  <span>midorimediacompany@gmail.com</span>
+                </a>
+              </div>
             </div>
             <div>
               <h4 className="text-xs md:text-sm tracking-widest mb-3 md:mb-4 opacity-60">SERVICES</h4>
@@ -1166,6 +1190,7 @@ setportfolioItems([]);
                 <div className="opacity-70 hover:opacity-100 transition-opacity cursor-pointer">Photography</div>
                 <div className="opacity-70 hover:opacity-100 transition-opacity cursor-pointer">Videography</div>
                 <div className="opacity-70 hover:opacity-100 transition-opacity cursor-pointer">Modeling Portfolios</div>
+                <div className="opacity-70 hover:opacity-100 transition-opacity cursor-pointer">Digital Marketing</div>
               </div>
             </div>
             <div>
