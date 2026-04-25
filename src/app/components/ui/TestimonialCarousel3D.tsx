@@ -146,7 +146,7 @@ export default function TestimonialCarousel3D() {
                 whileHover={isActive ? { scale: 1.02 } : {}}
               >
                 <div className={`
-                  relative bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-xl
+                  relative bg-gradient-to-br from-black/10 to-black/5 backdrop-blur-xl
                   border-2 rounded-2xl md:rounded-3xl p-6 sm:p-8 md:p-12
                   transition-all duration-500
                   ${isActive

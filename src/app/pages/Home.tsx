@@ -545,6 +545,7 @@ useEffect(() => {
 
     // ❗ Fetch
     const response = await getHomepagemages(page, activeFilter);
+    
 
     settotalpage(response.data.totalPages);
 
@@ -1127,7 +1128,7 @@ setportfolioItems([]);
                     <img
                       src={brand.logo}
                       alt={brand.name}
-                      className="w-full h-10 md:h-12 rounded-md object-fit  transition-all duration-300"
+                      className="w-full h-20 md:h-12 rounded-md object-fit  transition-all duration-300"
                     />
                   </motion.div>
                 ))}
