@@ -8,6 +8,12 @@ import HeroSlide2 from '../../assets/IMG_1501(1).jpeg'
 import HeroSlide3 from '../../assets/IMG_5048(1).jpg'
 
 
+import HeroSlideMobile1 from '../../assets/IMG_0289.jpeg'
+import HeroSlideMobile2 from '../../assets/IMG_8243.jpg'
+import HeroSlideMobile3 from '../../assets/IMG_8592.jpg'
+
+
+
 type Collaboration = {
   name: string;
   logo: string;
@@ -453,19 +459,25 @@ export default function Home() {
     }
   }, [selectedPortfolioItem]);
 
+const isMobile = window.matchMedia("(max-width: 600px)").matches;
+
   const heroSlides = [
     {
-      image: HeroSlide1,
+      image: isMobile?HeroSlideMobile3:HeroSlide1,
       title: "Crafting Visual Stories That Don't Fade",
       description: "Premium creative production for brands and individuals who demand excellence."
     },
     {
-      image: HeroSlide2,
+                  image: isMobile?HeroSlideMobile2:HeroSlide2,
+
+
       title: "Where Process Meets Artistry",
       description: "Structured workflows that deliver cinematic quality, every single time."
     },
     {
-      image: HeroSlide3,
+                image: isMobile?HeroSlideMobile1:HeroSlide3,
+
+
       title: "Editorial Precision, Creative Vision",
       description: "Modeling portfolios and brand campaigns that capture authentic presence."
     }

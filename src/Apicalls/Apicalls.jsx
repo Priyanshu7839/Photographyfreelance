@@ -2,9 +2,9 @@ import axios from 'axios'
 
 
 const api = axios.create({
-  baseURL:
-    "https://photographyfreelancebackend.onrender.com",
-  //  baseURL: "http://localhost:8002",
+  // baseURL:
+    // "https://photographyfreelancebackend.onrender.com",
+   baseURL: "http://localhost:8002",
 });
 
 
@@ -145,6 +145,8 @@ try {
          return error.response
     }
 }
+
+
 
 
 export async function getPreview(key) {
@@ -323,5 +325,25 @@ export async function uploadMultipartFileHomepage(file, clientId, variantType,on
   } catch (err) {
     console.error("Multipart upload failed:", err.response?.data || err.message);
      throw err;
+  }
+}
+
+export async function sendenquiry(formdata){
+  try {
+    const res = await api.post('/upload/sendenquiry',{
+      projectType: formdata.projectType,
+    projectScope: formdata.projectScope,
+    timeline: formdata.timeline,
+    vision: formdata.vision,
+    name: formdata.name,
+    email: formdata.email,
+    phone: formdata.phone,
+    budget: formdata.budget,
+    additionalDetails: formdata.additionalDetails
+    })
+
+    return res
+  } catch (error) {
+    return error.response
   }
 }

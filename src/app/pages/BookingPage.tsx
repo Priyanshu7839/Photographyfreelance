@@ -2,6 +2,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { Camera, Video, User, ArrowRight, ArrowLeft, Check } from "lucide-react";
+import { sendenquiry } from "../../Apicalls/Apicalls";
 
 type FormData = {
   projectType: string;
@@ -48,9 +49,25 @@ export default function BookingPage() {
     }
   };
 
-  const handleSubmit = () => {
+
+  const [submitting,setsubmitting] = useState(false)
+
+  const handleSubmit = async () => {
     console.log("Form submitted:", formData);
-    setCurrentStep(totalSteps + 1);
+
+    setsubmitting(true)
+
+    const response = await sendenquiry(formData)
+     console.log(response)
+
+     if(response.data.message === 'Enquiry received') {
+        setCurrentStep(totalSteps + 1);
+     }
+
+     setsubmitting(false)
+    
+
+    
   };
 
   const projectTypes = [
@@ -521,7 +538,7 @@ export default function BookingPage() {
                   disabled={!formData.budget}
                   className="flex-1 bg-accent px-6 md:px-8 py-3 md:py-4 text-sm md:text-base hover:bg-accent/90 transition-colors rounded-full flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <span className="hidden sm:inline">Submit Project</span><span className="sm:hidden">Submit</span> <Check className="w-4 h-4 md:w-5 md:h-5" />
+                  <span className="hidden sm:inline">{submitting?'Submitting':'Submit'} Project</span><span className="sm:hidden">{submitting?'Submitting':'Submit'}</span> <Check className="w-4 h-4 md:w-5 md:h-5" />
                 </button>
               )}
             </motion.div>
