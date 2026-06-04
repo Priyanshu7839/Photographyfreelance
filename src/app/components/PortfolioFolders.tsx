@@ -1,0 +1,467 @@
+import { motion, AnimatePresence } from "motion/react";
+import { useEffect, useState } from "react";
+import { X, ChevronLeft, ChevronRight } from "lucide-react";
+import { getHomepageFolderImages, getHomepageFolders } from "../../Utils/Apicalls";
+import { toast } from "sonner";
+
+type PortfolioImage = {
+  url: string;
+  caption?: string;
+};
+
+type PortfolioFolder = {
+  id: string;
+  name: string;
+  coverImage: string;
+  location?: string;
+  eventType?: string;
+  year?: string;
+  images: PortfolioImage[];
+};
+
+const portfolioFolders: PortfolioFolder[] = [
+  {
+    id: "events",
+    name: "Events",
+    coverImage: "https://images.unsplash.com/photo-1519741497674-611481863552?w=800",
+    location: "Weddings & Celebrations",
+    eventType: "Photography & Videography",
+    year: "2024-2025",
+    images: [
+      { url: "https://images.unsplash.com/photo-1519741497674-611481863552?w=1200", caption: "Destination Wedding" },
+      { url: "https://images.unsplash.com/photo-1606800052052-a08af7148866?w=1200", caption: "Bridal Portraits" },
+      { url: "https://images.unsplash.com/photo-1511285560929-80b456fea0bc?w=1200", caption: "Palace Ceremonies" },
+      { url: "https://images.unsplash.com/photo-1465495976277-4387d4b0b4c6?w=1200", caption: "Reception Coverage" },
+      { url: "https://images.unsplash.com/photo-1529636798458-92182e662485?w=1200", caption: "Celebration Moments" },
+      { url: "https://images.unsplash.com/photo-1583939003579-730e3918a45a?w=1200", caption: "Traditional Rituals" },
+      { url: "https://images.unsplash.com/photo-1519741497674-611481863552?w=1200", caption: "Beach Weddings" },
+      { url: "https://images.unsplash.com/photo-1465495976277-4387d4b0b4c6?w=1200", caption: "Evening Celebrations" }
+    ]
+  },
+  {
+    id: "modelling",
+    name: "Modelling",
+    coverImage: "https://images.unsplash.com/photo-1646105659698-1389145bf6a0?w=800",
+    location: "Fashion & Editorial",
+    eventType: "Studio & Outdoor",
+    year: "2024-2025",
+    images: [
+      { url: "https://images.unsplash.com/photo-1646105659698-1389145bf6a0?w=1200", caption: "Fashion Editorial" },
+      { url: "https://images.unsplash.com/photo-1606800052052-a08af7148866?w=1200", caption: "Studio Portraits" },
+      { url: "https://images.unsplash.com/photo-1529636798458-92182e662485?w=1200", caption: "Commercial Shoots" },
+      { url: "https://images.unsplash.com/photo-1583939003579-730e3918a45a?w=1200", caption: "Lifestyle Photography" },
+      { url: "https://images.unsplash.com/photo-1465495976277-4387d4b0b4c6?w=1200", caption: "Creative Concepts" },
+      { url: "https://images.unsplash.com/photo-1511285560929-80b456fea0bc?w=1200", caption: "Outdoor Sessions" }
+    ]
+  },
+  {
+    id: "digital-marketing",
+    name: "Digital Marketing",
+    coverImage: "https://images.unsplash.com/photo-1745848038063-bbb6fc8c8867?w=800",
+    location: "Brand Campaigns",
+    eventType: "Social Media Content",
+    year: "2024-2025",
+    images: [
+      { url: "https://images.unsplash.com/photo-1745848038063-bbb6fc8c8867?w=1200", caption: "Brand Photography" },
+      { url: "https://images.unsplash.com/photo-1511285560929-80b456fea0bc?w=1200", caption: "Product Shoots" },
+      { url: "https://images.unsplash.com/photo-1529636798458-92182e662485?w=1200", caption: "Social Media Content" },
+      { url: "https://images.unsplash.com/photo-1465495976277-4387d4b0b4c6?w=1200", caption: "Campaign Visuals" },
+      { url: "https://images.unsplash.com/photo-1583939003579-730e3918a45a?w=1200", caption: "Marketing Materials" }
+    ]
+  },
+  {
+    id: "commercial",
+    name: "Commercial",
+    coverImage: "https://images.unsplash.com/photo-1511285560929-80b456fea0bc?w=800",
+    location: "Corporate & Business",
+    eventType: "Professional Photography",
+    year: "2024-2025",
+    images: [
+      { url: "https://images.unsplash.com/photo-1511285560929-80b456fea0bc?w=1200", caption: "Corporate Events" },
+      { url: "https://images.unsplash.com/photo-1519741497674-611481863552?w=1200", caption: "Business Portraits" },
+      { url: "https://images.unsplash.com/photo-1606800052052-a08af7148866?w=1200", caption: "Professional Headshots" },
+      { url: "https://images.unsplash.com/photo-1465495976277-4387d4b0b4c6?w=1200", caption: "Conference Coverage" },
+      { url: "https://images.unsplash.com/photo-1529636798458-92182e662485?w=1200", caption: "Brand Documentation" }
+    ]
+  },
+  {
+    id: "portfolio-shoots",
+    name: "Portfolio Shoots",
+    coverImage: "https://images.unsplash.com/photo-1529636798458-92182e662485?w=800",
+    location: "Model Portfolios",
+    eventType: "Actor & Talent",
+    year: "2024-2025",
+    images: [
+      { url: "https://images.unsplash.com/photo-1529636798458-92182e662485?w=1200", caption: "Model Portfolio" },
+      { url: "https://images.unsplash.com/photo-1646105659698-1389145bf6a0?w=1200", caption: "Actor Headshots" },
+      { url: "https://images.unsplash.com/photo-1606800052052-a08af7148866?w=1200", caption: "Talent Showcase" },
+      { url: "https://images.unsplash.com/photo-1583939003579-730e3918a45a?w=1200", caption: "Professional Portraits" },
+      { url: "https://images.unsplash.com/photo-1465495976277-4387d4b0b4c6?w=1200", caption: "Creative Sessions" },
+      { url: "https://images.unsplash.com/photo-1511285560929-80b456fea0bc?w=1200", caption: "Portfolio Development" }
+    ]
+  },
+  {
+    id: "lifestyle",
+    name: "Lifestyle",
+    coverImage: "https://images.unsplash.com/photo-1465495976277-4387d4b0b4c6?w=800",
+    location: "Personal & Family",
+    eventType: "Lifestyle Photography",
+    year: "2024-2025",
+    images: [
+      { url: "https://images.unsplash.com/photo-1465495976277-4387d4b0b4c6?w=1200", caption: "Family Moments" },
+      { url: "https://images.unsplash.com/photo-1583939003579-730e3918a45a?w=1200", caption: "Personal Stories" },
+      { url: "https://images.unsplash.com/photo-1519741497674-611481863552?w=1200", caption: "Lifestyle Sessions" },
+      { url: "https://images.unsplash.com/photo-1511285560929-80b456fea0bc?w=1200", caption: "Candid Photography" }
+    ]
+  }
+];
+
+export default function PortfolioFolders() {
+  const [selectedFolder, setSelectedFolder] = useState<PortfolioFolder | null>(null);
+  const [carouselIndex, setCarouselIndex] = useState(0);
+  const [lightboxImage, setLightboxImage] = useState<PortfolioImage | null>(null);
+
+
+
+const [folders, setFolders] =
+  useState([]);
+
+const [
+  foldersLoading,
+  setFoldersLoading,
+] = useState(false);
+
+
+const fetchHomepageFolders =
+  async () => {
+    try {
+      setFoldersLoading(true);
+
+      const response =
+        await getHomepageFolders();
+
+      setFolders(
+        response.data
+      );
+    } catch (error) {
+      toast.error(
+        error.message
+      );
+    } finally {
+      setFoldersLoading(false);
+    }
+  };
+
+  useEffect(()=>{fetchHomepageFolders()},[])
+
+  const [
+  folderImages,
+  setFolderImages,
+] = useState([]);
+
+const fetchFolderImages =
+  async (
+    variantType
+  ) => {
+    try {
+      const response =
+        await getHomepageFolderImages(
+          variantType
+        );
+
+      setFolderImages(
+        response
+      );
+    } catch (error) {
+      toast.error(
+        error.message
+      );
+    }
+  };
+
+  const openFolder = (folder: PortfolioFolder) => {
+    setSelectedFolder(folder);
+    setCarouselIndex(0);
+  };
+
+  const closeFolder = () => {
+    setSelectedFolder(null);
+    setCarouselIndex(0);
+  };
+
+  const openLightbox = (image: PortfolioImage) => {
+    setLightboxImage(image);
+  };
+
+  const closeLightbox = () => {
+    setLightboxImage(null);
+  };
+
+  const nextImage = () => {
+    if (folderImages) {
+      setCarouselIndex((prev) => (prev + 1) % folderImages?.total_images);
+    }
+  };
+
+  const prevImage = () => {
+    if (selectedFolder) {
+      setCarouselIndex((prev) => (prev - 1 + folderImages?.total_images) % folderImages?.total_images);
+    }
+  };
+
+  const nextLightbox = () => {
+    if (folderImages && lightboxImage) {
+      const currentIdx = folderImages?.data.findIndex(img => img.image_url === lightboxImage);
+       const prevIdx = (currentIdx + 1 + folderImages?.total_images) % folderImages?.total_images;
+      setLightboxImage(folderImages?.data[prevIdx]?.image_url);
+    
+    }
+  };
+
+  const prevLightbox = () => {
+    if (folderImages && lightboxImage) {
+      const currentIdx = folderImages?.data?.findIndex(img => img.image_url === lightboxImage);
+      const prevIdx = (currentIdx - 1 + folderImages?.total_images) % folderImages?.total_images;
+      setLightboxImage(folderImages?.data[prevIdx]?.image_url);
+    }
+  };
+
+  const getCarouselPosition = (index: number) => {
+    const diff = index - carouselIndex;
+    const absIndex = Math.abs(diff);
+
+    const translateX = diff * 45;
+    const translateZ = -absIndex * 200;
+    const rotateY = diff * 15;
+    const opacity = Math.max(0.3, 1 - absIndex * 0.3);
+    const scale = Math.max(0.7, 1 - absIndex * 0.15);
+    const blur = absIndex > 0 ? absIndex * 1.5 : 0;
+
+    return {
+      transform: `
+        perspective(1500px)
+        translateX(${translateX}%)
+        translateZ(${translateZ}px)
+        rotateY(${rotateY}deg)
+        scale(${scale})
+      `,
+      opacity,
+      filter: `blur(${blur}px)`,
+      zIndex: 100 - absIndex
+    };
+  };
+
+  
+
+  return (
+    <div>
+      {/* Level 1: Folder Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 lg:gap-10">
+        {folders?.map((folder, index) => (
+          <motion.div
+            key={index}
+            initial={{ opacity: 0, y: 40 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: index * 0.1 }}
+            onClick={() => {openFolder(folder)
+              fetchFolderImages(folder.variant_type)
+
+            }}
+            className="group relative cursor-pointer"
+          >
+            {/* Folder Body */}
+            <div className="relative overflow-hidden rounded-lg md:rounded-xl aspect-[4/3] bg-gradient-to-br from-white/5 to-white/[0.02] border border-white/10 group-hover:border-accent/40 transition-all duration-300 shadow-lg">
+              {/* Cover Image */}
+              <div className="absolute inset-0 overflow-hidden">
+                <img
+                  src={folder.cover_image}
+                  alt={folder.variant_type}
+                  loading="lazy"
+                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+              </div>
+
+              {/* Simple Info Bar at Bottom */}
+              <div className="absolute bottom-0 left-0 right-0 bg-black/40 backdrop-blur-sm px-4 py-3 md:px-5 md:py-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm md:text-base font-medium truncate pr-3">
+                    {folder.variant_type}
+                  </h3>
+                  <div className="text-xs md:text-sm opacity-70 whitespace-nowrap">
+                    {folder.number_of_images} {folder.number_of_images === 1 ? 'Photo' : 'Photos'}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        ))}
+      </div>
+
+      {/* Level 2: 3D Carousel Modal */}
+      <AnimatePresence>
+        {selectedFolder && !lightboxImage && folderImages &&(
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/95 backdrop-blur-xl"
+          >
+            {/* Close Button */}
+            <button
+              onClick={closeFolder}
+              className="absolute top-4 right-4 md:top-6 md:right-6 z-50 w-10 h-10 md:w-12 md:h-12 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 flex items-center justify-center hover:bg-white/20 transition-colors"
+            >
+              <X className="w-5 h-5 md:w-6 md:h-6" />
+            </button>
+
+            {/* Folder Title */}
+            <div className="absolute top-4 left-4 md:top-6 md:left-6 z-50">
+              <h2 className="text-xl md:text-2xl lg:text-3xl">{folderImages.variant_type}</h2>
+              <div className="text-xs md:text-sm opacity-60 mt-1">
+                {folderImages?.total_images} {folderImages?.total_images === 1 ? 'Photo' : 'Photos'}
+              </div>
+            </div>
+
+            {/* 3D Carousel Container */}
+            <div className="absolute inset-0 flex items-center justify-center px-4 md:px-8">
+              <div
+                className="relative w-full max-w-5xl h-[60vh] md:h-[70vh]"
+                style={{ perspective: '1500px' }}
+              >
+                {folderImages?.data?.map((image, index) => {
+                  const position = getCarouselPosition(index);
+                  const isActive = index === carouselIndex;
+
+                  return (
+                    <motion.div
+                      key={image?.id}
+                      className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[85%] sm:w-[75%] md:w-[60%] cursor-pointer"
+                      style={{
+                        ...position,
+                        transformStyle: 'preserve-3d',
+                        transition: 'all 0.7s cubic-bezier(0.4, 0, 0.2, 1)'
+                      }}
+                      onClick={() => isActive && openLightbox(image?.image_url)}
+                    >
+                      <div className={`
+                        relative rounded-xl md:rounded-2xl overflow-hidden border-2 transition-all duration-500
+                        ${isActive ? 'border-accent/60 shadow-2xl shadow-accent/20' : 'border-white/10'}
+                      `}>
+                        <img
+                          src={image?.image_url}
+                          alt={image?.id || ''}
+                          loading="lazy"
+                          className="w-full h-auto object-contain max-h-[60vh] md:max-h-[70vh]"
+                        />
+
+                        {/* {isActive && image.caption && (
+                          <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4 md:p-6"
+                          >
+                            <p className="text-sm md:text-base lg:text-lg">{image.caption}</p>
+                          </motion.div>
+                        )} */}
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Navigation Arrows */}
+            <button
+              onClick={prevImage}
+              className="absolute left-4 md:left-8 top-1/2 -translate-y-1/2 z-40 w-12 h-12 md:w-14 md:h-14 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 flex items-center justify-center hover:bg-white/20 transition-colors"
+            >
+              <ChevronLeft className="w-6 h-6 md:w-7 md:h-7" />
+            </button>
+            <button
+              onClick={nextImage}
+              className="absolute right-4 md:right-8 top-1/2 -translate-y-1/2 z-40 w-12 h-12 md:w-14 md:h-14 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 flex items-center justify-center hover:bg-white/20 transition-colors"
+            >
+              <ChevronRight className="w-6 h-6 md:w-7 md:h-7" />
+            </button>
+
+            {/* Progress Indicator */}
+            <div className="absolute bottom-6 md:bottom-8 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 md:gap-3 px-4 py-2 md:px-6 md:py-3 rounded-full bg-white/10 backdrop-blur-sm border border-white/20">
+              <span className="text-sm md:text-base">{carouselIndex + 1}</span>
+              <div className="w-16 md:w-24 h-px bg-white/20">
+                <div
+                  className="h-full bg-accent transition-all duration-300"
+                  style={{ width: `${((carouselIndex + 1) / folderImages?.total_images) * 100}%` }}
+                />
+              </div>
+              <span className="text-sm md:text-base opacity-60">{folderImages?.total_images}</span>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Level 3: Lightbox */}
+      <AnimatePresence>
+        {lightboxImage && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={closeLightbox}
+            className="fixed inset-0 z-[60] bg-black/98 backdrop-blur-xl flex items-center justify-center p-4"
+          >
+            {/* Close Button */}
+            <button
+              onClick={closeLightbox}
+              className="absolute top-4 right-4 md:top-6 md:right-6 z-10 w-10 h-10 md:w-12 md:h-12 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 flex items-center justify-center hover:bg-white/20 transition-colors"
+            >
+              <X className="w-5 h-5 md:w-6 md:h-6" />
+            </button>
+
+            {/* Image */}
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              transition={{ type: "spring", damping: 25 }}
+              onClick={(e) => e.stopPropagation()}
+              className="relative max-w-7xl max-h-[90vh] w-full"
+            >
+              <img
+                src={lightboxImage}
+                alt={lightboxImage || ''}
+                className="w-full h-auto max-h-[90vh] object-contain rounded-xl md:rounded-2xl"
+              />
+
+              {lightboxImage.caption && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2 }}
+                  className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4 md:p-6 rounded-b-xl md:rounded-b-2xl"
+                >
+                  <p className="text-base md:text-lg lg:text-xl text-center">{lightboxImage.caption}</p>
+                </motion.div>
+              )}
+            </motion.div>
+
+            {/* Navigation Arrows */}
+            <button
+              onClick={(e) => { e.stopPropagation(); prevLightbox(); }}
+              className="absolute left-4 md:left-8 top-1/2 -translate-y-1/2 w-12 h-12 md:w-14 md:h-14 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 flex items-center justify-center hover:bg-white/20 transition-colors"
+            >
+              <ChevronLeft className="w-6 h-6 md:w-7 md:h-7" />
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); nextLightbox(); }}
+              className="absolute right-4 md:right-8 top-1/2 -translate-y-1/2 w-12 h-12 md:w-14 md:h-14 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 flex items-center justify-center hover:bg-white/20 transition-colors"
+            >
+              <ChevronRight className="w-6 h-6 md:w-7 md:h-7" />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
