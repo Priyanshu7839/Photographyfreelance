@@ -1654,9 +1654,9 @@ useEffect(() => {
                   >
                     {clientData?.project_status}
                   </span>
-                  <span className="opacity-80">
+                  {/* <span className="opacity-80">
                     {clientData?.progress_percentage}% Complete
-                  </span>
+                  </span> */}
                 </div>
               </div>
               <div className="text-right">

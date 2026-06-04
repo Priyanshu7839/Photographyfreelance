@@ -3,27 +3,39 @@ import { motion } from "motion/react";
 import { Mail, Lock, ArrowRight, CheckCircle2, Clock } from "lucide-react";
 import { Link, useNavigate } from "react-router";
 import { loginUser } from "../../Utils/Apicalls";
+import { toast } from "sonner";
 
 export default function TeamLogin() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const navigate = useNavigate();
 
+  const [loading, setLoading] =
+  useState(false);
+
   const handleSubmit = async(e: React.FormEvent) => {
     e.preventDefault();
     // Add authentication logic here
 
     if(email === ""){
+      toast.error('Please Enter Your Email')
       return;
     }
     if(password === ""){
+      toast.error('Please Enter Your Password')
       return;
     }
+    setLoading(true);
     try {
+
+         
   const response = await loginUser({
     email,
     password,
   });
+   toast.success(
+        response.message
+      );
 
   if(response.message === 'Login successful'){
     navigate("/dashboard");
@@ -35,7 +47,12 @@ export default function TeamLogin() {
   }
 
 } catch (error) {
+  toast.error(
+        error.message
+      );
   console.error(error.message);
+}finally{
+  setLoading(false)
 }
   };
 
@@ -127,21 +144,21 @@ Studio Workspace
                   </div>
 
                   {/* Forgot Password */}
-                  <div className="flex justify-end">
+                  {/* <div className="flex justify-end">
                     <button
                       type="button"
                       className="text-xs opacity-40 hover:opacity-70 transition-opacity"
                     >
                       Forgot password?
                     </button>
-                  </div>
+                  </div> */}
 
                   {/* Submit Button */}
                   <button
                     type="submit"
                     className="w-full bg-blue-500 hover:bg-blue-600 text-white py-4 rounded-xl transition-all duration-300 flex items-center justify-center gap-2 group mt-8"
                   >
-                    <span className="text-base">Access Workspace</span>
+                    <span className="text-base">{loading ? 'Logging...':'Access Workspace'}</span>
                     <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                   </button>
                 </form>
