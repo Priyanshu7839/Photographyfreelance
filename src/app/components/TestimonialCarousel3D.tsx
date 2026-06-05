@@ -84,6 +84,18 @@ const testimonials: Testimonial[] = [
 export default function TestimonialCarousel3D() {
   const [activeIndex, setActiveIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Detect mobile screen size
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   useEffect(() => {
     if (isPaused) return;
@@ -95,9 +107,20 @@ export default function TestimonialCarousel3D() {
     return () => clearInterval(interval);
   }, [isPaused]);
 
-  const getCardPosition = (index: number) => {
+  const getCardPosition = (index: number, isMobile: boolean = false) => {
     const total = testimonials.length;
     const diff = ((index - activeIndex + total) % total) - Math.floor(total / 2);
+
+    // On mobile, hide all non-active cards
+    if (isMobile && diff !== 0) {
+      return {
+        transform: 'translateX(0)',
+        opacity: 0,
+        filter: 'blur(0px)',
+        zIndex: 0,
+        pointerEvents: 'none' as const
+      };
+    }
 
     const angle = (diff * 30);
     const translateZ = -Math.abs(diff) * 150;
@@ -116,7 +139,8 @@ export default function TestimonialCarousel3D() {
       `,
       opacity,
       filter: `blur(${blur}px)`,
-      zIndex: 100 - Math.abs(diff)
+      zIndex: 100 - Math.abs(diff),
+      pointerEvents: 'auto' as const
     };
   };
 
@@ -128,9 +152,9 @@ export default function TestimonialCarousel3D() {
     >
       {/* 3D Carousel Container */}
       <div className="relative h-[400px] sm:h-[450px] md:h-[500px] lg:h-[550px] flex items-center justify-center overflow-hidden">
-        <div className="relative w-full max-w-4xl mx-auto" style={{ transformStyle: 'preserve-3d' }}>
+        <div className="relative w-full max-w-4xl mx-auto" style={{ transformStyle: isMobile ? 'flat' : 'preserve-3d' }}>
           {testimonials.map((testimonial, index) => {
-            const position = getCardPosition(index);
+            const position = getCardPosition(index, isMobile);
             const isActive = index === activeIndex;
 
             return (
@@ -139,7 +163,7 @@ export default function TestimonialCarousel3D() {
                 className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[85%] sm:w-[75%] md:w-[650px] cursor-pointer"
                 style={{
                   ...position,
-                  transformStyle: 'preserve-3d',
+                  transformStyle: isMobile ? 'flat' : 'preserve-3d',
                   transition: 'all 0.8s cubic-bezier(0.4, 0, 0.2, 1)'
                 }}
                 onClick={() => setActiveIndex(index)}

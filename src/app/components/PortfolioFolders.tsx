@@ -127,9 +127,47 @@ const [folders, setFolders] =
   useState([]);
 
 const [
+  pendingFolders,
+  setPendingFolders,
+] = useState(null);
+
+const [
   foldersLoading,
   setFoldersLoading,
 ] = useState(false);
+
+const preloadFolders =
+  async (
+    nextFolders
+  ) => {
+    const images =
+      nextFolders.map(
+        (folder) =>
+          new Promise(
+            (resolve) => {
+              const img =
+                new Image();
+
+              img.src =
+                folder.image_url;
+
+              img.onload =
+                resolve;
+
+              img.onerror =
+                resolve;
+            }
+          )
+      );
+
+    await Promise.all(
+      images
+    );
+
+    setFolders(
+      nextFolders
+    );
+  };
 
 
 const fetchHomepageFolders =
@@ -140,7 +178,7 @@ const fetchHomepageFolders =
       const response =
         await getHomepageFolders();
 
-      setFolders(
+      await preloadFolders(
         response.data
       );
     } catch (error) {
@@ -152,8 +190,19 @@ const fetchHomepageFolders =
     }
   };
 
-  useEffect(()=>{fetchHomepageFolders()},[])
+  useEffect(() => {
+  fetchHomepageFolders();
 
+  const interval =
+    setInterval(() => {
+      fetchHomepageFolders();
+    }, 5000);
+
+  return () =>
+    clearInterval(
+      interval
+    );
+}, []);
   const [
   folderImages,
   setFolderImages,
@@ -256,48 +305,48 @@ const fetchFolderImages =
   return (
     <div>
       {/* Level 1: Folder Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 lg:gap-10">
-        {folders?.map((folder, index) => (
-          <motion.div
-            key={index}
-            initial={{ opacity: 0, y: 40 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: index * 0.1 }}
-            onClick={() => {openFolder(folder)
-              fetchFolderImages(folder.variant_type)
+      <div className="columns-2 md:columns-3 lg:columns-4 gap-4 space-y-4">
+  {folders?.map((folder, index) => (
+    <motion.div
+      key={index}
+      initial={{ opacity: 0, y: 40 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      transition={{ delay: index * 0.1 }}
+      onClick={() => {
+        openFolder(folder);
+        fetchFolderImages(folder.variant_type);
+      }}
+      className="group cursor-pointer break-inside-avoid mb-4"
+    >
+      <div className="relative overflow-hidden rounded-xl bg-zinc-900 border border-white/10 group-hover:border-accent/40 transition-all duration-300">
+        
+        <img
+          src={folder.cover_image}
+          alt={folder.variant_type}
+          loading="lazy"
+          className="w-full h-auto block"
+        />
 
-            }}
-            className="group relative cursor-pointer"
-          >
-            {/* Folder Body */}
-            <div className="relative overflow-hidden rounded-lg md:rounded-xl aspect-[4/3] bg-gradient-to-br from-white/5 to-white/[0.02] border border-white/10 group-hover:border-accent/40 transition-all duration-300 shadow-lg">
-              {/* Cover Image */}
-              <div className="absolute inset-0 overflow-hidden">
-                <img
-                  src={folder.cover_image}
-                  alt={folder.variant_type}
-                  loading="lazy"
-                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-              </div>
+        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
 
-              {/* Simple Info Bar at Bottom */}
-              <div className="absolute bottom-0 left-0 right-0 bg-black/40 backdrop-blur-sm px-4 py-3 md:px-5 md:py-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm md:text-base font-medium truncate pr-3">
-                    {folder.variant_type}
-                  </h3>
-                  <div className="text-xs md:text-sm opacity-70 whitespace-nowrap">
-                    {folder.number_of_images} {folder.number_of_images === 1 ? 'Photo' : 'Photos'}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        ))}
+        <div className="absolute bottom-0 left-0 right-0 p-4">
+          <div className="flex justify-between items-center">
+            <h3 className="text-sm font-medium truncate pr-2">
+              {folder.variant_type}
+            </h3>
+
+            <span className="text-xs opacity-70 whitespace-nowrap">
+              {folder.number_of_images}{" "}
+              {folder.number_of_images === 1 ? "Photo" : "Photos"}
+            </span>
+          </div>
+        </div>
+
       </div>
+    </motion.div>
+  ))}
+</div>
 
       {/* Level 2: 3D Carousel Modal */}
       <AnimatePresence>

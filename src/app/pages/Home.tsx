@@ -9,10 +9,16 @@ import HeroSlide1 from '../../assets/IMG_1495(1).jpg'
 import HeroSlide2 from '../../assets/IMG_1501(1).jpeg'
 import HeroSlide3 from '../../assets/IMG_5048(1).jpg'
 
-
 import HeroSlideMobile1 from '../../assets/IMG_0289.jpeg'
 import HeroSlideMobile2 from '../../assets/IMG_8243.jpg'
 import HeroSlideMobile3 from '../../assets/IMG_8592.jpg'
+
+import Rajmahal from '../../assets/Rajmahal.jpeg'
+import Recologo  from'../../assets/RecoLogo.png'
+import Rently from '../../assets/Rently logo.png'
+import Super8 from '../../assets/super8.png'
+
+
 
 export default function Home() {
   const heroRef = useRef<HTMLDivElement>(null);
@@ -455,34 +461,42 @@ const isMobile = window.matchMedia("(max-width: 600px)").matches;
               viewport={{ once: true }}
               className="border border-white/10 rounded-2xl md:rounded-3xl p-6 md:p-8 lg:p-12 bg-white/5 backdrop-blur-sm"
             >
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-6 md:gap-8">
-                {[
-                  { name: "Four Seasons", logo: "https://logo.clearbit.com/fourseasons.com" },
-                  { name: "Vogue", logo: "https://logo.clearbit.com/vogue.com" },
-                  { name: "Taj Hotels", logo: "https://logo.clearbit.com/tajhotels.com" },
-                  { name: "Condé Nast", logo: "https://logo.clearbit.com/condenast.com" },
-                  { name: "Ritz-Carlton", logo: "https://logo.clearbit.com/ritzcarlton.com" },
-                  { name: "Sabyasachi", logo: "https://logo.clearbit.com/sabyasachi.com" },
-                  { name: "Oberoi Hotels", logo: "https://logo.clearbit.com/oberoihotels.com" },
-                  { name: "Harper's Bazaar", logo: "https://logo.clearbit.com/harpersbazaar.com" },
-                  { name: "The Leela", logo: "https://logo.clearbit.com/theleela.com" }
-                ].map((brand, index) => (
-                  <motion.div
-                    key={brand.name}
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    whileInView={{ opacity: 1, scale: 1 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: index * 0.05 }}
-                    className="flex items-center justify-center p-3 md:p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-accent/30 transition-all duration-300 group"
-                  >
-                    <img
-                      src={brand.logo}
-                      alt={brand.name}
-                      className="w-full h-10 md:h-12 object-contain grayscale opacity-50 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-300"
-                    />
-                  </motion.div>
-                ))}
-              </div>
+             <div className="columns-2 sm:columns-3 gap-6 md:gap-8">
+  {[
+    { name: "Rajmahal", logo: Rajmahal },
+    { name: "Rently", logo: Rently },
+    { name: "Super8", logo: Super8 },
+    { name: "Recologo", logo: Recologo },
+  ].map((brand, index) => (
+    <motion.div
+      key={brand.name}
+      initial={{ opacity: 0, scale: 0.8 }}
+      whileInView={{ opacity: 1, scale: 1 }}
+      viewport={{ once: true }}
+      transition={{ delay: index * 0.05 }}
+      className={`
+        break-inside-avoid mb-6
+        flex items-center justify-center
+        rounded-2xl overflow-hidden
+        
+
+        ${
+          index % 4 === 0
+            ? "h-32"
+            : index % 3 === 0
+            ? "h-24"
+            : "h-20"
+        }
+      `}
+    >
+      <img
+        src={brand.logo}
+        alt={brand.name}
+        className="w-full h-full object-contain"
+      />
+    </motion.div>
+  ))}
+</div>
             </motion.div>
           </div>
         </div>
