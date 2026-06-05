@@ -100,6 +100,14 @@ const [loading, setLoading] =
   fetchClients();
 }, []);
 
+
+
+    const user = JSON.parse(
+  localStorage.getItem("user") || "{}"
+);
+
+
+
   return (
     <div className="relative bg-background text-foreground min-h-screen">
       {/* Navigation */}
@@ -118,17 +126,17 @@ const [loading, setLoading] =
             <h1 className="text-4xl md:text-5xl lg:text-6xl mb-4 tracking-tight">Client Projects</h1>
             <p className="text-lg md:text-xl opacity-70">Manage workflows and track deliverables</p>
           </div>
-          <Link
+         {user.role && <Link
             to="/onboarding"
             className="flex items-center gap-2 px-6 py-3.5 bg-accent rounded-full hover:bg-accent/90 shadow-lg shadow-accent/20 transition-all whitespace-nowrap"
           >
             <Plus className="w-5 h-5" />
             <span>Create Project</span>
-          </Link>
+          </Link>}
         </motion.div>
 
         {/* Search & Filters */}
-        <motion.div
+       {user.role && <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
@@ -181,7 +189,7 @@ const [loading, setLoading] =
             </div>
           </div>
         </motion.div>
-
+}
         {/* Projects Grid */}
         <motion.div
           initial={{ opacity: 0 }}
