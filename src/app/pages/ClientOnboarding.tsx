@@ -463,7 +463,7 @@ useEffect(() => {
           className="p-2 cursor-pointer hover:bg-white/50 text-accent px-4"
           onClick={() => {
             setQuery(item.label);
-            setSelectedLocation(item.data);
+            setSelectedLocation(item.label);
             setSuggestions([]);
           }}
         >
