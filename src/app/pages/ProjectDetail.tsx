@@ -1883,6 +1883,28 @@ useEffect(() => {
                         }
                       </p>
                     </div>
+                    <div className="p-4 bg-white/5 rounded-xl">
+                      <p className="text-sm opacity-60 mb-2">
+                        Client Login Email
+                      </p>
+                      <p className="text-md">
+                        {
+                          overviewData?.client_details
+                            ?.email
+                        }
+                      </p>
+                    </div>
+                    <div className="p-4 bg-white/5 rounded-xl">
+                      <p className="text-sm opacity-60 mb-2">
+                        Client Login Password
+                      </p>
+                      <p className="text-md">
+                        {
+                          overviewData?.client_details
+                            ?.password
+                        }
+                      </p>
+                    </div>
                   </div>
                 </div>
               </motion.div>
