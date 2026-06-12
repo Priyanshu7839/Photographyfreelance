@@ -551,7 +551,7 @@ function SummaryCard({
 
       {/* CTAs */}
       <div className="px-6 pb-6 space-y-3">
-        <motion.button
+        {/* <motion.button
           onClick={onBook}
           disabled={!selectedPackage}
           whileHover={selectedPackage ? { scale: 1.02 } : {}}
@@ -564,7 +564,7 @@ function SummaryCard({
         >
           Book This Package
           <ArrowRight size={16} />
-        </motion.button>
+        </motion.button> */}
         <Link
           to="/booking"
           className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-white/12 text-white/50 text-sm hover:border-white/25 hover:text-white/80 transition-all duration-200"

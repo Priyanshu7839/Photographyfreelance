@@ -703,3 +703,21 @@ export const clientLogin =
       );
     }
   };
+
+  export const downloadFile =
+  async (fileId) => {
+    try {
+      const response =
+        await api.get(
+          `project/download/${fileId}`
+        );
+
+      return response.data;
+    } catch (error) {
+      throw new Error(
+        error.response?.data
+          ?.message ||
+          "Download failed"
+      );
+    }
+  };

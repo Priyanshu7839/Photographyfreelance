@@ -19,6 +19,82 @@ type PortfolioFolder = {
   images: PortfolioImage[];
 };
 
+
+// Pinterest-style skeleton heights in px — varied to mimic masonry boards
+const SKELETON_HEIGHTS_PX = [256, 320, 208, 288, 240, 352];
+
+function PinterestSkeleton({ index }: { index: number }) {
+  const heightPx = SKELETON_HEIGHTS_PX[index % SKELETON_HEIGHTS_PX.length];
+  return (
+    <div className="flex flex-col gap-2.5">
+      {/* Card block */}
+      <div
+        className="relative w-full rounded-2xl overflow-hidden"
+        style={{
+          height: heightPx,
+          background: "linear-gradient(135deg, rgba(255,255,255,0.055) 0%, rgba(255,255,255,0.03) 100%)",
+        }}
+      >
+        {/* shimmer sweep */}
+        <div
+          className="absolute inset-0 animate-[pinterest-shimmer_1.8s_ease-in-out_infinite]"
+          style={{
+            background: "linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.07) 50%, transparent 60%)",
+            animationDelay: `${index * 0.15}s`,
+          }}
+        />
+      </div>
+
+      {/* Title text bar */}
+      <div
+        className="h-3.5 rounded-full bg-white/[0.06] overflow-hidden relative"
+        style={{ width: `${55 + ((index * 17) % 35)}%` }}
+      >
+        <div
+          className="absolute inset-0 animate-[pinterest-shimmer_1.8s_ease-in-out_infinite]"
+          style={{
+            background: "linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.07) 50%, transparent 60%)",
+            animationDelay: `${index * 0.15 + 0.1}s`,
+          }}
+        />
+      </div>
+
+      {/* Subtitle bar */}
+      <div
+        className="h-2.5 rounded-full bg-white/[0.04] overflow-hidden relative"
+        style={{ width: `${35 + ((index * 11) % 25)}%` }}
+      >
+        <div
+          className="absolute inset-0 animate-[pinterest-shimmer_1.8s_ease-in-out_infinite]"
+          style={{
+            background: "linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.06) 50%, transparent 60%)",
+            animationDelay: `${index * 0.15 + 0.2}s`,
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function CarouselSkeleton() {
+  return (
+    <div className="absolute inset-0 flex flex-col items-center justify-center gap-6">
+      {/* main card skeleton */}
+      <div className="w-[85%] sm:w-[75%] md:w-[60%] aspect-[3/2] rounded-xl md:rounded-2xl bg-white/5 border-2 border-white/10 overflow-hidden relative">
+        <div className="absolute inset-0 -translate-x-full animate-[shimmer_1.8s_infinite] bg-gradient-to-r from-transparent via-white/8 to-transparent" />
+        <div className="absolute inset-0 animate-pulse bg-gradient-to-br from-white/5 to-transparent" />
+      </div>
+      {/* caption skeleton */}
+      <div className="h-4 w-40 rounded bg-white/10 animate-pulse" />
+      {/* progress bar skeleton */}
+      <div className="flex items-center gap-3 px-6 py-3 rounded-full bg-white/10 border border-white/20">
+        <div className="h-3 w-6 rounded bg-white/20 animate-pulse" />
+        <div className="w-24 h-px bg-white/20" />
+        <div className="h-3 w-6 rounded bg-white/20 animate-pulse" />
+      </div>
+    </div>
+  );
+}
 const portfolioFolders: PortfolioFolder[] = [
   {
     id: "events",
@@ -136,6 +212,9 @@ const [
   setFoldersLoading,
 ] = useState(false);
 
+
+let folderLoaded = false
+
 const preloadFolders =
   async (
     nextFolders
@@ -173,7 +252,12 @@ const preloadFolders =
 const fetchHomepageFolders =
   async () => {
     try {
-      setFoldersLoading(true);
+     
+
+    if(!folderLoaded){
+    setFoldersLoading(true)
+
+    }
 
       const response =
         await getHomepageFolders();
@@ -187,8 +271,11 @@ const fetchHomepageFolders =
       );
     } finally {
       setFoldersLoading(false);
+      folderLoaded=true
     }
   };
+
+
 
   useEffect(() => {
   fetchHomepageFolders();
@@ -306,7 +393,18 @@ const fetchFolderImages =
     <div>
       {/* Level 1: Folder Grid */}
       <div className="columns-2 md:columns-3 lg:columns-4 gap-4 space-y-4">
-  {folders?.map((folder, index) => (
+     {   foldersLoading?Array.from({ length: 6 }).map((_, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.08, duration: 0.4 }}
+                className="break-inside-avoid mb-4 md:mb-5"
+              >
+                <PinterestSkeleton index={i} />
+              </motion.div>
+            )):
+  folders?.map((folder, index) => (
     <motion.div
       key={index}
       initial={{ opacity: 0, y: 40 }}

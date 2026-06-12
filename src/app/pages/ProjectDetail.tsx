@@ -46,9 +46,10 @@ import {
   Music2,
   Trash2,
   MapPinHouse,
+  DownloadIcon,
 } from "lucide-react";
 import { Link, useParams } from "react-router";
-import { format } from "date-fns";
+import { addMinutes, format } from "date-fns";
 import { toast } from "sonner";
 import {
   addMoodboardDiscussion,
@@ -56,6 +57,7 @@ import {
   addTravelDiscussion,
   assignGears,
   deleteMoodboardSong,
+  downloadFile,
   getAllGears,
   getClientAssets,
   getClientHeader,
@@ -1571,6 +1573,38 @@ useEffect(() => {
   }, [activeTab]);
 
 
+  const handleDownload =
+  async (fileId) => {
+    try {
+      const response =
+        await downloadFile(
+          fileId
+        );
+
+      const link =
+        document.createElement(
+          "a"
+        );
+
+      link.href =
+        response.download_url;
+
+      document.body.appendChild(
+        link
+      );
+
+      link.click();
+
+      document.body.removeChild(
+        link
+      );
+    } catch (error) {
+      toast.error(
+        error.message
+      );
+    }
+  };
+
 
   return (
     <div className="relative bg-background text-foreground min-h-screen">
@@ -1787,12 +1821,15 @@ useEffect(() => {
                               {activity.activity_message}{" "}
                             </span>
                           </p>
-                          <p className="text-xs opacity-40 mt-1">
-                            {format(
-                              new Date(activity.created_at),
-                              "MMM dd, yyyy 'at' h:mm a",
-                            )}
-                          </p>
+                        <p className="text-xs opacity-40 mt-1">
+  {format(
+    addMinutes(
+      new Date(activity.created_at),
+      330 // 5h 30m
+    ),
+    "MMM dd, yyyy 'at' h:mm a"
+  )}
+</p>
                         </div>
                       </motion.div>
                     ))}
@@ -1899,9 +1936,7 @@ useEffect(() => {
                         <div className="flex gap-3">
                           {["edited", "unedited"].map((set) => (
                             <button
-                             onClick={() =>
-      changeFilter(set)
-    }
+                             
                               key={set}
                               onClick={() => setSetFilter(set)}
                               className={`px-5 py-2.5 rounded-xl text-sm capitalize transition-all ${
@@ -1947,15 +1982,21 @@ useEffect(() => {
 
                     {/* Asset Grid */}
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                      {currentAssets?.map((asset, index) => (
+                      {currentAssets?.length === 0 ?
+                      <p className="text-white">No Assets Uploaded !</p>
+                      :currentAssets?.map((asset, index) => (
                         <motion.div
                           key={asset.file_id}
+
+                          
                           initial={{ opacity: 0, scale: 0.9 }}
                           animate={{ opacity: 1, scale: 1 }}
                           transition={{ delay: index * 0.05 }}
                           onClick={() => setSelectedAsset(asset)}
                           className="group relative aspect-square bg-white/5 border border-white/10 rounded-xl overflow-hidden cursor-pointer hover:border-accent/50 transition-all"
                         >
+
+                     
                           <img
                             src={asset.preview_url}
                             alt={asset.file_name}
@@ -1978,7 +2019,26 @@ useEffect(() => {
                               <div className="w-8 h-8 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
                                 <ZoomIn className="w-4 h-4" />
                               </div>
+
+                              
                             </div>
+
+                                 <div
+                          className="absolute right-4 bottom-4"
+                           onClick={(e) =>                 
+                                 { 
+                                  e.stopPropagation()
+                                  handleDownload(
+                                    asset.file_id
+                                  )}
+                                }
+                          >
+
+
+                            <DownloadIcon/>
+                          </div>
+
+                            
                           </div>
                         </motion.div>
                       ))}
@@ -2452,7 +2512,8 @@ useEffect(() => {
                               step.is_my_step && (
                                 <button
                                   onClick={() =>
-                                    handleWorkflowAction("working")
+                                   { handleWorkflowAction("working")
+                                    fetchOverview()}
                                   }
                                   className="px-4 py-2 border border-white/10 rounded-full text-sm hover:bg-accent/10 hover:border-accent/30 transition-all whitespace-nowrap"
                                 >
@@ -2461,7 +2522,9 @@ useEffect(() => {
                               )}
                             {!isCompleted && !isLocked && step.is_my_step && (
                               <button
-                                onClick={() => handleWorkflowAction("finish")}
+                                onClick={() => {handleWorkflowAction("finish")
+                                  fetchOverview()
+                                }}
                                 className="px-4 py-2 border border-white/10 rounded-full text-sm hover:bg-accent/10 hover:border-accent/30 transition-all whitespace-nowrap"
                               >
                                 Mark as Complete
