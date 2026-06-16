@@ -170,7 +170,7 @@ useEffect(() => {
   };
 
   const handleRemoveStep = (stepId: number) => {
-    setWorkflowSteps(workflowSteps.filter((step) => step.id !== stepId));
+    setWorkflowSteps(workflowSteps.filter((step) => step.workflow_step_id !== stepId));
   };
 
  const handleAssignTeamMember = (
@@ -554,7 +554,7 @@ useEffect(() => {
                         </div>
                         {selectedTemplate === "custom" && (
                           <button
-                            onClick={() => handleRemoveStep(step.id)}
+                            onClick={() => handleRemoveStep(step.workflow_step_id)}
                             className="w-8 h-8 rounded-full bg-white/5 hover:bg-red-500/20 border border-white/10 hover:border-red-500/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all"
                           >
                             <X className="w-4 h-4" />
