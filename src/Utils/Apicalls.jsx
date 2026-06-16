@@ -744,3 +744,25 @@ export const clientLogin =
       );
     }
   };
+
+  export const addProjectStep =
+  async (
+    clientId,
+    stepData
+  ) => {
+    try {
+      const response =
+        await api.post(
+          `/project/${clientId}/addsteps`,
+          stepData
+        );
+
+      return response.data;
+    } catch (error) {
+      throw new Error(
+        error.response?.data
+          ?.message ||
+          "Failed to add step"
+      );
+    }
+  };

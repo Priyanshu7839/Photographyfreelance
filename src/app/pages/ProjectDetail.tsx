@@ -55,6 +55,7 @@ import { toast } from "sonner";
 import {
   addMoodboardDiscussion,
   addMoodboardSong,
+  addProjectStep,
   addTravelDiscussion,
   assignGears,
   deleteMoodboardSong,
@@ -70,6 +71,7 @@ import {
   getMoodboardSongs,
   getProductionOverview,
   getProductionSetup,
+  getTeamMembers,
   getTravelData,
   getTravelDiscussions,
   updateClient,
@@ -91,64 +93,6 @@ const mockProject = {
   completedSteps: 6,
 };
 
-const workflowSteps = [
-  {
-    id: 1,
-    name: "Initial Consultation",
-    assignedTo: "Sarah Chen",
-    status: "completed" as const,
-    completedAt: "2026-03-20T10:30:00",
-  },
-  {
-    id: 2,
-    name: "Shot List Creation",
-    assignedTo: "Sarah Chen",
-    status: "completed" as const,
-    completedAt: "2026-03-25T14:20:00",
-  },
-  {
-    id: 3,
-    name: "Pre-wedding Shoot",
-    assignedTo: "Mike Rodriguez",
-    status: "completed" as const,
-    completedAt: "2026-04-05T16:45:00",
-  },
-  {
-    id: 4,
-    name: "Event Coverage",
-    assignedTo: "Sarah Chen",
-    status: "completed" as const,
-    completedAt: "2026-05-15T23:30:00",
-  },
-  {
-    id: 5,
-    name: "Selection",
-    assignedTo: "Emily Lee",
-    status: "completed" as const,
-    completedAt: "2026-05-18T11:15:00",
-  },
-  {
-    id: 6,
-    name: "Editing",
-    assignedTo: "Mike Rodriguez",
-    status: "completed" as const,
-    completedAt: "2026-05-25T17:00:00",
-  },
-  {
-    id: 7,
-    name: "Color Grading",
-    assignedTo: "Emily Lee",
-    status: "in_progress" as const,
-    completedAt: null,
-  },
-  {
-    id: 8,
-    name: "Final Delivery",
-    assignedTo: "Sarah Chen",
-    status: "pending" as const,
-    completedAt: null,
-  },
-];
 
 const mockAssets = [
   {
@@ -869,6 +813,7 @@ const toggleGearForCrew = (
 
       fetchClientHeader()
       fetchWorkflow()
+      fetchOverview()
 
       
     } catch (error) {
@@ -1313,7 +1258,7 @@ if(user.role ){
       setOverviewLoading(true);
 
       const response = await getClientOverview(clientId);
-
+console.log(response.data)
       setOverviewData(response.data);
     } catch (error) {
       toast.error(error.message);
@@ -1328,7 +1273,7 @@ if(user.role ){
       setWorkflowLoading(true);
 
       const response = await getClientWorkflow(clientId);
-      console.log(response.data);
+  
       setWorkflowData(response.data);
     } catch (error) {
       toast.error(error.message);
@@ -1662,10 +1607,7 @@ useEffect(() => {
 
  },[clientData])
 
-  // Add Step modal
-  const [showAddStepModal, setShowAddStepModal] = useState(false);
-  const [newStepName, setNewStepName] = useState("");
-  const [newStepAssignee, setNewStepAssignee] = useState("Sarah Chen");
+  
 
 
   function openEditModal() {
@@ -1709,6 +1651,84 @@ useEffect(() => {
        setsavingEdit(false)
     }
   };
+
+    const [teamMembers, setTeamMembers] = useState([]);
+
+  useEffect(() => {
+    const fetchTeamMembers = async () => {
+      try {
+        const response =
+          await getTeamMembers();
+  console.log(response.data)
+        setTeamMembers(response.data);
+
+        fetchWorkflow()
+      } catch (error) {
+        console.error(error.message);
+      }
+    };
+  
+    fetchTeamMembers();
+  }, []);
+
+  const [showAddStepModal, setShowAddStepModal] = useState(false);
+  const [newStepName, setNewStepName] = useState("");
+  const [newStepAssignee, setNewStepAssignee] = useState("");
+  const [newStepOrder, setNewStepOrder] = useState("");
+  const [addingStep,setAddingStep] = useState(false)
+  
+
+  useEffect(()=>{
+    setNewStepOrder(workflowData?.length + 1)
+  },[workflowData])
+ 
+
+  useEffect(()=>{
+    setNewStepAssignee(teamMembers?.[0]?.member_id)
+  },[teamMembers])
+
+
+  const saveAddStep =
+  async () => {
+
+    setAddingStep(true)
+    try {
+      await addProjectStep(
+        clientId,
+        {
+          step_name:
+            newStepName,
+
+          assigned_member_id:
+            newStepAssignee,
+
+          step_order:
+            newStepOrder,
+        }
+      );
+
+      toast.success(
+        "Step added successfully"
+      );
+
+      fetchWorkflow();
+      fetchOverview()
+      fetchClientHeader()
+    } catch (error) {
+      toast.error(
+        error.message
+      );
+    }
+    finally{
+      setAddingStep(false)
+    setShowAddStepModal(false);
+
+    }
+  };
+
+  
+
+
 
 
   return (
@@ -1944,7 +1964,7 @@ useEffect(() => {
                 {/* Current Active Step */}
                 <div className="bg-white/[0.055] border border-white/10 rounded-2xl p-6 shadow-[0_18px_60px_rgba(0,0,0,0.18)]">
                   <h3 className="text-xl mb-4">Current Active Step</h3>
-                  {workflowSteps.find((s) => s.status === "in_progress") && (
+                 
                     <div className="flex items-center justify-between p-4 bg-accent/10 border border-accent/30 rounded-xl">
                       <div className="flex items-center gap-4">
                         <div className="w-10 h-10 rounded-full bg-accent/20 flex items-center justify-center">
@@ -1960,11 +1980,24 @@ useEffect(() => {
                           </p>
                         </div>
                       </div>
-                      <span className="px-3 py-1 rounded-full bg-[#2d5f4f]/20 text-emerald-200 text-sm">
-                        In Progress
+                       <div className="flex items-center gap-5">
+                      <span
+                        className={`px-3 py-1 rounded-full text-sm capitalize ${
+                         overviewData?.current_step?.step_status === "Completed"
+                            ? "bg-accent/20 text-accent"
+                            : overviewData?.current_step?.step_status === "In Progress"
+                              ? "bg-[#2d5f4f]/20 text-emerald-200"
+                              : "bg-amber-500/10 text-amber-200"
+                        }`}
+                      >
+                        {overviewData?.current_step?.step_status}
                       </span>
+                      {/* <span className="opacity-80">
+                        {clientData?.progress_percentage}% Complete
+                      </span> */}
                     </div>
-                  )}
+                    </div>
+                
                 </div>
 
                 {/* Recent Activity */}
@@ -4276,7 +4309,7 @@ crew.member_name?.split(" ").slice(-1)[0]?.[0] || ""
       </AnimatePresence>
 
       {/* Add Step Modal */}
-      <AnimatePresence>
+     <AnimatePresence>
         {showAddStepModal && (
           <motion.div
             initial={{ opacity: 0 }}
@@ -4291,7 +4324,7 @@ crew.member_name?.split(" ").slice(-1)[0]?.[0] || ""
               exit={{ scale: 0.95, y: 16 }}
               transition={{ type: "spring", damping: 28, stiffness: 300 }}
               onClick={(e) => e.stopPropagation()}
-              className="relative bg-[#0e0e0e] border border-white/10 rounded-3xl p-8 max-w-md w-full shadow-2xl"
+              className="relative bg-[#0e0e0e] border border-white/10 rounded-3xl p-8 max-w-md w-full shadow-2xl max-h-[90vh] overflow-y-auto"
             >
               <div className="flex items-center justify-between mb-7">
                 <h2 className="text-2xl">Add Workflow Step</h2>
@@ -4301,6 +4334,7 @@ crew.member_name?.split(" ").slice(-1)[0]?.[0] || ""
               </div>
 
               <div className="space-y-5">
+                {/* Step Name */}
                 <div>
                   <label className="text-xs tracking-widest opacity-50 mb-2 block">STEP NAME</label>
                   <input
@@ -4314,6 +4348,7 @@ crew.member_name?.split(" ").slice(-1)[0]?.[0] || ""
                   />
                 </div>
 
+                {/* Assign To */}
                 <div>
                   <label className="text-xs tracking-widest opacity-50 mb-2 block">ASSIGN TO</label>
                   <select
@@ -4321,15 +4356,77 @@ crew.member_name?.split(" ").slice(-1)[0]?.[0] || ""
                     onChange={(e) => setNewStepAssignee(e.target.value)}
                     className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-base focus:outline-none focus:border-accent/50 transition-colors appearance-none"
                   >
-                    {["Sarah Chen", "Mike Rodriguez", "Emily Lee", "Jordan Park", "David Kim"].map((name) => (
-                      <option key={name} value={name} className="bg-[#0e0e0e]">{name}</option>
+                    {teamMembers?.map((name) => (
+                      <option key={name?.member_id} value={name?.member_id} className="bg-[#0e0e0e]">{name?.full_name}</option>
                     ))}
                   </select>
                 </div>
 
-                <div className="p-4 bg-white/5 border border-white/10 rounded-xl">
-                  <p className="text-xs opacity-50 mb-1">Position</p>
-                  <p className="text-sm opacity-80">Will be added at the end of the workflow as Step {workflowSteps.length + 1}</p>
+                {/* Step Order */}
+                <div>
+                  <label className="text-xs tracking-widest opacity-50 mb-2 block">STEP ORDER</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={workflowData?.length + 1}
+                    value={newStepOrder}
+                    onChange={(e) => {
+                      const val = e.target.value === "" ? "" : Math.min(workflowData?.length + 1, Math.max(1, Number(e.target.value)));
+                      setNewStepOrder(val === "" ? "" : Number(val));
+                    }}
+                    placeholder={`1 – ${workflowData?.length + 1} (default: end)`}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-base focus:outline-none focus:border-accent/50 transition-colors"
+                  />
+                  <p className="text-xs opacity-40 mt-1.5">Enter a position between 1 and {workflowData?.length + 1}</p>
+                </div>
+
+                {/* Current steps preview */}
+                <div>
+                  <label className="text-xs tracking-widest opacity-50 mb-3 block">CURRENT STEPS</label>
+                  <div className="space-y-1.5 max-h-52 overflow-y-auto pr-1">
+                  
+                  {
+                    workflowData?.map((step,i)=>{
+ const initials = step?.assigned_member?.split(" ")?.map(w => w[0])?.join("");
+                        const statusColor =
+                          step?.step_status === "completed" ? "bg-accent/15 border-accent/20" :
+                          step?.step_status === "in_progress" ? "bg-blue-500/15 border-blue-500/20" :
+                          "bg-white/[0.03] border-white/8";
+                        const numColor =
+                          step?.step_status === "completed" ? "text-accent" :
+                          step?.step_status === "in_progress" ? "text-blue-300" :
+                          "text-white/30";
+
+                        return (
+                          <div
+                            key={step.project_step_id}
+                            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border ${statusColor}`}
+                          >
+                            <div className="w-6 h-6 rounded-full bg-white/5 border border-white/10 flex items-center justify-center flex-shrink-0">
+                              <span className={`text-[10px] font-medium ${numColor}`}>{step?.step_order}</span>
+                            </div>
+                            <span className="text-sm text-white/70 flex-1 truncate">{step?.step_name}</span>
+                            <div
+                              className={`w-7 h-7 rounded-full border flex items-center justify-center flex-shrink-0 ${
+                                step?.step_status === "completed" ? "bg-accent/20 border-accent/30" :
+                                step?.step_status === "in_progress" ? "bg-blue-500/20 border-blue-500/30" :
+                                "bg-white/5 border-white/15"
+                              }`}
+                            >
+                              <span className={`text-[9px] font-medium ${
+                                step?.step_status === "completed" ? "text-accent" :
+                                step?.status === "in_progress" ? "text-blue-300" :
+                                "text-white/40"
+                              }`}>{initials}</span>
+                            </div>
+                          </div>
+                        );
+                    })
+                  }
+
+
+                   
+                  </div>
                 </div>
               </div>
 
@@ -4341,7 +4438,7 @@ crew.member_name?.split(" ").slice(-1)[0]?.[0] || ""
                   Cancel
                 </button>
                 <button
-                
+                  onClick={saveAddStep}
                   disabled={!newStepName.trim()}
                   className={`flex-1 py-3 rounded-full text-sm flex items-center justify-center gap-2 transition-colors ${
                     newStepName.trim()
@@ -4350,7 +4447,9 @@ crew.member_name?.split(" ").slice(-1)[0]?.[0] || ""
                   }`}
                 >
                   <Plus className="w-4 h-4" />
-                  Add Step
+                  {
+                    addingStep ? 'Adding...' : 'Add Step'
+                  }
                 </button>
               </div>
             </motion.div>
