@@ -62,7 +62,7 @@ return(
         <div className="flex gap-4 md:gap-8 items-center">
           <Link to="/" className="hidden sm:block text-sm opacity-70 hover:opacity-100 transition-opacity">Home</Link>
           <Link to="/dashboard" className="hidden sm:block text-sm opacity-70 hover:opacity-100 transition-opacity">Dashboard</Link>
-          <a href="#team" className="hidden md:block text-sm opacity-70 hover:opacity-100 transition-opacity">Team</a>
+          {/* <a href="#team" className="hidden md:block text-sm opacity-70 hover:opacity-100 transition-opacity">Team</a> */}
           <Link to="/booking" className="bg-accent px-4 md:px-6 py-2 md:py-2.5 text-xs md:text-sm hover:bg-accent/90 transition-colors rounded-full">
             Book a Shoot
           </Link>
