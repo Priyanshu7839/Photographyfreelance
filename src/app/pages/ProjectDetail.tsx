@@ -47,6 +47,7 @@ import {
   Trash2,
   MapPinHouse,
   DownloadIcon,
+  Save,
 } from "lucide-react";
 import { Link, useParams } from "react-router";
 import { addMinutes, format } from "date-fns";
@@ -71,6 +72,7 @@ import {
   getProductionSetup,
   getTravelData,
   getTravelDiscussions,
+  updateClient,
   updateClientNotes,
   updateWorkflowStatus,
   uploadMultipartFileClientassets,
@@ -705,6 +707,18 @@ const invoiceData = {
     "Thank you for choosing Midori Media for your special day. We're honored to capture your memories!",
 };
 
+const ProjectDetailShimmer = ({ className = "" }: { className?: string }) => (
+  <div className={`relative overflow-hidden bg-white/10 rounded ${className}`}>
+    <div className="absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white/15 to-transparent" />
+  </div>
+);
+
+const ProjectDetailCardShimmer = ({ className = "" }: { className?: string }) => (
+  <div className={`relative overflow-hidden bg-white/5 border border-white/10 rounded-xl ${className}`}>
+    <div className="absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+  </div>
+);
+
 export default function ProjectDetail() {
   const [activeTab, setActiveTab] = useState("overview");
   const [setFilter, setSetFilter] = useState("edited");
@@ -796,9 +810,9 @@ const toggleGearForCrew = (
   const getRoleColor = (color: string) => {
     const colors: Record<string, string> = {
       accent: "bg-accent/20 text-accent border-accent/30",
-      blue: "bg-blue-500/20 text-blue-300 border-blue-500/30",
-      purple: "bg-purple-500/20 text-purple-300 border-purple-500/30",
-      orange: "bg-orange-500/20 text-orange-300 border-orange-500/30",
+      blue: "bg-[#2d5f4f]/20 text-emerald-200 border-blue-500/30",
+      purple: "bg-[#2d5f4f]/15 text-emerald-100 border-purple-500/30",
+      orange: "bg-amber-500/10 text-amber-200 border-orange-500/30",
     };
     return colors[color] || colors.accent;
   };
@@ -821,11 +835,12 @@ const toggleGearForCrew = (
 
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchClientHeader = async () => {
+  const fetchClientHeader = async () => {
       try {
         const response = await getClientHeader(clientId);
         setClientData(response.data);
+        console.log(response.data)
+        
       } catch (error) {
         console.error(error);
 
@@ -835,17 +850,27 @@ const toggleGearForCrew = (
       }
     };
 
+  useEffect(() => {
+    
+
     fetchClientHeader();
   }, [clientId]);
 
-  const handleWorkflowAction = async (action) => {
+  const handleWorkflowAction = async (action,step_id) => {
+
+    
     try {
-      const response = await updateWorkflowStatus(clientId, action);
+      const response = await updateWorkflowStatus(clientId,action,step_id);
 
       toast.success(response.message);
 
       // Optional:
       // Refresh overview/header data
+
+      fetchClientHeader()
+      fetchWorkflow()
+
+      
     } catch (error) {
       toast.error(error.message);
     }
@@ -876,6 +901,8 @@ const [
   const [discussionsLoading, setDiscussionsLoading] = useState(false);
 
   const [clientNotes, setClientNotes] = useState("");
+
+  const [clientNotesLoading, setClientNotesLoading] = useState(false);
 
   const [savingNotes, setSavingNotes] = useState(false);
 
@@ -1158,11 +1185,15 @@ if(user.role ){
 
   const fetchClientNotes = async () => {
     try {
+      setClientNotesLoading(true);
+
       const response = await getClientNotes(clientId);
 
       setClientNotes(response.data?.client_notes || "");
     } catch (error) {
       toast.error(error.message);
+    } finally {
+      setClientNotesLoading(false);
     }
   };
 
@@ -1292,7 +1323,7 @@ if(user.role ){
   };
 
   const fetchWorkflow = async () => {
-    console.log("hello");
+    
     try {
       setWorkflowLoading(true);
 
@@ -1526,9 +1557,12 @@ const [assetsloading, setassetsLoading] =
 ]);
 
 const [moodboardAssets,setMoodboardAssets] = useState(null)
+const [moodboardAssetsLoading, setMoodboardAssetsLoading] = useState(false);
 const fetchMoodboardAssets =
   async () => {
     try {
+      setMoodboardAssetsLoading(true);
+
       const response =
         await getMoodboardAssets(
           clientId
@@ -1541,6 +1575,8 @@ const fetchMoodboardAssets =
       toast.error(
         error.message
       );
+    } finally {
+      setMoodboardAssetsLoading(false);
     }
   };
 
@@ -1606,8 +1642,77 @@ useEffect(() => {
   };
 
 
+  // ------------------edit prjoect and add step ------------------------------//
+
+
+ 
+
+
+
+
+    const [showEditModal, setShowEditModal] = useState(false);
+  const [editDraft, setEditDraft] = useState({});
+  const [savingEdit,setsavingEdit] = useState(false);
+
+  
+  
+  
+ useEffect(()=>{
+ setEditDraft(clientData)
+
+ },[clientData])
+
+  // Add Step modal
+  const [showAddStepModal, setShowAddStepModal] = useState(false);
+  const [newStepName, setNewStepName] = useState("");
+  const [newStepAssignee, setNewStepAssignee] = useState("Sarah Chen");
+
+
+  function openEditModal() {
+    setShowEditModal(true);
+  }
+
+ 
+  const saveEditModal =
+  async () => {
+    setsavingEdit(true)
+    try {
+      await updateClient(
+        clientId,
+        {
+          client_name:
+            editDraft?.client_name,
+
+          event_date:
+            editDraft?.event_date,
+
+          event_type:
+            editDraft?.event_name,
+
+          event_location:
+            editDraft?.event_location,
+        }
+      );
+
+      toast.success(
+        "Client updated successfully"
+      );
+
+      fetchClientHeader()
+    } catch (error) {
+      toast.error(
+        error.message
+      );
+    }
+    finally{
+       setShowEditModal(false);
+       setsavingEdit(false)
+    }
+  };
+
+
   return (
-    <div className="relative bg-background text-foreground min-h-screen">
+    <div className="relative min-h-screen overflow-hidden text-foreground">
       {/* Navigation */}
       <Navbar />
 
@@ -1621,7 +1726,7 @@ useEffect(() => {
         >
           <Link
             to="/dashboard"
-            className="inline-flex items-center gap-2 text-sm opacity-60 hover:opacity-100 transition-opacity"
+            className="inline-flex items-center gap-2 text-sm text-white/60 hover:text-white transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
             <span>Back to Dashboard</span>
@@ -1637,34 +1742,53 @@ useEffect(() => {
         >
           <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-6 mb-10">
             <div>
-              <h1 className="text-3xl md:text-4xl lg:text-5xl mb-5 tracking-tight capitalize">
-                {clientData?.client_name}
-              </h1>
-              <div className="flex flex-wrap items-center gap-4 text-base opacity-70">
-                <div className="flex items-center gap-2">
-                  <span className="px-3 py-1 rounded-full bg-accent/20 text-accent text-sm capitalize">
-                    {clientData?.event_name}
-                  </span>
+              {loading ? (
+                <div className="space-y-5">
+                  <ProjectDetailShimmer className="h-12 w-72 md:w-96" />
+                  <div className="flex flex-wrap items-center gap-4">
+                    <ProjectDetailShimmer className="h-7 w-28 rounded-full" />
+                    <ProjectDetailShimmer className="h-5 w-40" />
+                    <ProjectDetailShimmer className="h-5 w-52" />
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Calendar className="w-4 h-4" />
-                  <span>
-                    {clientData &&
-                      format(new Date(clientData?.event_date), "MMMM dd, yyyy")}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 capitalize">
-                  <span>{clientData?.event_location}</span>
-                </div>
-              </div>
+              ) : (
+                <>
+                  <h1 className="text-3xl md:text-4xl lg:text-5xl mb-5 tracking-tight capitalize">
+                    {clientData?.client_name}
+                  </h1>
+                  <div className="flex flex-wrap items-center gap-4 text-base opacity-70">
+                    <div className="flex items-center gap-2">
+                      <span className="px-3 py-1 rounded-full bg-accent/20 text-accent text-sm capitalize">
+                        {clientData?.event_name}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Calendar className="w-4 h-4" />
+                      <span>
+                        {clientData &&
+                          format(new Date(clientData?.event_date), "MMMM dd, yyyy")}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 capitalize">
+                      <span>{clientData?.event_location}</span>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
 
-            <div className="flex gap-3">
-              <button className="flex items-center gap-2 px-4 py-2.5 border border-white/10 rounded-full text-sm hover:bg-white/5 hover:border-white/20 transition-all">
+             <div className="flex gap-3">
+              <button
+                onClick={openEditModal}
+                className="flex items-center gap-2 px-4 py-2.5 border border-white/10 rounded-full text-sm hover:bg-white/5 hover:border-white/20 transition-all"
+              >
                 <Edit className="w-4 h-4" />
                 <span>Edit Project</span>
               </button>
-              <button className="flex items-center gap-2 px-4 py-2.5 bg-accent rounded-full text-sm hover:bg-accent/90 transition-colors">
+              <button
+                onClick={() => setShowAddStepModal(true)}
+                className="flex items-center gap-2 px-4 py-2.5 bg-accent rounded-full text-sm hover:bg-accent/90 transition-colors"
+              >
                 <Plus className="w-4 h-4" />
                 <span>Add Step</span>
               </button>
@@ -1672,43 +1796,61 @@ useEffect(() => {
           </div>
 
           {/* Overall Progress */}
-          <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <p className="text-sm opacity-60 mb-5">Project Status</p>
-                <div className="flex items-center gap-5">
-                  <span
-                    className={`px-3 py-1 rounded-full text-sm ${
-                      clientData?.project_status === "Completed"
-                        ? "bg-accent/20 text-accent"
-                        : clientData?.project_status === "In Progress"
-                          ? "bg-blue-500/20 text-blue-300"
-                          : "bg-orange-500/20 text-orange-300"
-                    }`}
-                  >
-                    {clientData?.project_status}
-                  </span>
-                  {/* <span className="opacity-80">
-                    {clientData?.progress_percentage}% Complete
-                  </span> */}
+          <div className="bg-white/[0.055] border border-white/10 rounded-2xl p-6 shadow-[0_18px_60px_rgba(0,0,0,0.18)]">
+            {loading ? (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="space-y-3">
+                    <ProjectDetailShimmer className="h-4 w-24" />
+                    <ProjectDetailShimmer className="h-7 w-32 rounded-full" />
+                  </div>
+                  <div className="space-y-3 flex flex-col items-end">
+                    <ProjectDetailShimmer className="h-4 w-32" />
+                    <ProjectDetailShimmer className="h-6 w-24" />
+                  </div>
                 </div>
+                <ProjectDetailShimmer className="h-2 w-full rounded-full" />
               </div>
-              <div className="text-right">
-                <p className="text-sm opacity-60 mb-1">Workflow Progress</p>
-                <p className="text-lg">
-                  {clientData?.completed_steps} of {clientData?.total_steps}{" "}
-                  steps
-                </p>
-              </div>
-            </div>
-            <div className="h-2 bg-white/5 rounded-full overflow-hidden">
-              <motion.div
-                initial={{ width: 0 }}
-                animate={{ width: `${clientData?.progress_percentage || 0}%` }}
-                transition={{ duration: 1, ease: "easeOut" }}
-                className="h-full bg-accent rounded-full"
-              />
-            </div>
+            ) : (
+              <>
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <p className="text-sm opacity-60 mb-5">Project Status</p>
+                    <div className="flex items-center gap-5">
+                      <span
+                        className={`px-3 py-1 rounded-full text-sm ${
+                          clientData?.project_status === "Completed"
+                            ? "bg-accent/20 text-accent"
+                            : clientData?.project_status === "In Progress"
+                              ? "bg-[#2d5f4f]/20 text-emerald-200"
+                              : "bg-amber-500/10 text-amber-200"
+                        }`}
+                      >
+                        {clientData?.project_status}
+                      </span>
+                      {/* <span className="opacity-80">
+                        {clientData?.progress_percentage}% Complete
+                      </span> */}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm opacity-60 mb-1">Workflow Progress</p>
+                    <p className="text-lg">
+                      {clientData?.completed_steps} of {clientData?.total_steps}{" "}
+                      steps
+                    </p>
+                  </div>
+                </div>
+                <div className="h-2 bg-white/5 rounded-full overflow-hidden">
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: `${clientData?.progress_percentage || 0}%` }}
+                    transition={{ duration: 1, ease: "easeOut" }}
+                    className="h-full bg-accent rounded-full"
+                  />
+                </div>
+              </>
+            )}
           </div>
         </motion.div>
 
@@ -1718,7 +1860,7 @@ useEffect(() => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
         >
-          <div className="flex gap-2 mb-8 border-b border-white/10 overflow-x-auto">
+          <div className="flex gap-2 mb-8 border-b border-white/10 overflow-x-auto bg-white/[0.03] rounded-2xl px-2 pt-2">
             {[
               "overview",
               "assets",
@@ -1736,8 +1878,8 @@ useEffect(() => {
                 onClick={() => setActiveTab(tab)}
                 className={`px-6 py-3 text-sm capitalize transition-all relative whitespace-nowrap ${
                   activeTab === tab
-                    ? "opacity-100"
-                    : "opacity-50 hover:opacity-70"
+                    ? "text-accent"
+                    : "text-white/50 hover:text-white/75"
                 }`}
               >
                 {tab === "license"
@@ -1770,8 +1912,37 @@ useEffect(() => {
                 transition={{ duration: 0.3 }}
                 className="space-y-6"
               >
+                {overviewLoading ? (
+                  <>
+                    <div className="bg-white/5 border border-white/10 rounded-2xl p-6 space-y-4">
+                      <ProjectDetailShimmer className="h-7 w-48" />
+                      <ProjectDetailCardShimmer className="h-20 w-full" />
+                    </div>
+                    <div className="bg-white/5 border border-white/10 rounded-2xl p-6 space-y-4">
+                      <ProjectDetailShimmer className="h-7 w-40" />
+                      {[0, 1, 2].map((overviewActivitySkeleton) => (
+                        <div key={overviewActivitySkeleton} className="flex items-start gap-3 p-3">
+                          <ProjectDetailShimmer className="h-2 w-2 rounded-full mt-2" />
+                          <div className="flex-1 space-y-2">
+                            <ProjectDetailShimmer className="h-4 w-3/4" />
+                            <ProjectDetailShimmer className="h-3 w-36" />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="bg-white/5 border border-white/10 rounded-2xl p-6 space-y-4">
+                      <ProjectDetailShimmer className="h-7 w-44" />
+                      <div className="grid md:grid-cols-2 gap-4">
+                        {[0, 1, 2, 3, 4, 5, 6, 7].map((overviewStatSkeleton) => (
+                          <ProjectDetailCardShimmer key={overviewStatSkeleton} className="h-24" />
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <>
                 {/* Current Active Step */}
-                <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
+                <div className="bg-white/[0.055] border border-white/10 rounded-2xl p-6 shadow-[0_18px_60px_rgba(0,0,0,0.18)]">
                   <h3 className="text-xl mb-4">Current Active Step</h3>
                   {workflowSteps.find((s) => s.status === "in_progress") && (
                     <div className="flex items-center justify-between p-4 bg-accent/10 border border-accent/30 rounded-xl">
@@ -1789,7 +1960,7 @@ useEffect(() => {
                           </p>
                         </div>
                       </div>
-                      <span className="px-3 py-1 rounded-full bg-blue-500/20 text-blue-300 text-sm">
+                      <span className="px-3 py-1 rounded-full bg-[#2d5f4f]/20 text-emerald-200 text-sm">
                         In Progress
                       </span>
                     </div>
@@ -1797,7 +1968,7 @@ useEffect(() => {
                 </div>
 
                 {/* Recent Activity */}
-                <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
+                <div className="bg-white/[0.055] border border-white/10 rounded-2xl p-6 shadow-[0_18px_60px_rgba(0,0,0,0.18)]">
                   <div className="mb-4">
                     <h3 className="text-xl ">Recent Activity</h3>
                   </div>
@@ -1837,7 +2008,7 @@ useEffect(() => {
                 </div>
 
                 {/* Project Summary */}
-                <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
+                <div className="bg-white/[0.055] border border-white/10 rounded-2xl p-6 shadow-[0_18px_60px_rgba(0,0,0,0.18)]">
                   <h3 className="text-xl mb-4">Project Summary</h3>
                   <div className="grid md:grid-cols-2 gap-4">
                     <div className="p-4 bg-white/5 rounded-xl">
@@ -1907,6 +2078,8 @@ useEffect(() => {
                     </div>
                   </div>
                 </div>
+                  </>
+                )}
               </motion.div>
             )}
 
@@ -1955,7 +2128,7 @@ useEffect(() => {
                     <div className="space-y-4 mb-6">
                       {/* Sets Filter */}
                       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                        <div className="flex gap-3">
+                        <div className="flex flex-wrap gap-3">
                           {["edited", "unedited"].map((set) => (
                             <button
                              
@@ -1978,7 +2151,7 @@ useEffect(() => {
 
 
                          }}
-                        className="flex items-center gap-2 px-4 py-2.5 bg-accent rounded-full text-sm hover:bg-accent/90 transition-colors">
+                        className="flex items-center gap-2 px-4 py-2.5 bg-accent rounded-full text-sm text-white shadow-lg shadow-accent/15 hover:bg-accent/90 transition-colors">
                           <Upload className="w-4 h-4" />
                           <span>Upload Assets</span>
                         </button>}
@@ -2004,7 +2177,11 @@ useEffect(() => {
 
                     {/* Asset Grid */}
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                      {currentAssets?.length === 0 ?
+                      {assetsloading && currentAssets?.length === 0 ? (
+                        [0, 1, 2, 3, 4, 5, 6, 7].map((assetGridSkeleton) => (
+                          <ProjectDetailCardShimmer key={assetGridSkeleton} className="aspect-square" />
+                        ))
+                      ) : currentAssets?.length === 0 ?
                       <p className="text-white">No Assets Uploaded !</p>
                       :currentAssets?.map((asset, index) => (
                         <motion.div
@@ -2015,7 +2192,7 @@ useEffect(() => {
                           animate={{ opacity: 1, scale: 1 }}
                           transition={{ delay: index * 0.05 }}
                           onClick={() => setSelectedAsset(asset)}
-                          className="group relative aspect-square bg-white/5 border border-white/10 rounded-xl overflow-hidden cursor-pointer hover:border-accent/50 transition-all"
+                          className="group relative aspect-square bg-white/[0.055] border border-white/10 rounded-xl overflow-hidden cursor-pointer hover:border-accent/50 hover:shadow-[0_16px_40px_rgba(0,0,0,0.28)] transition-all"
                         >
 
                      
@@ -2075,7 +2252,7 @@ useEffect(() => {
                     {/* Vendor Collections Grid */}
                     {!selectedVendorCollection && (
                       <>
-                        <div className="bg-gradient-to-br from-accent/10 to-transparent border border-accent/20 rounded-2xl p-6">
+                        <div className="bg-gradient-to-br from-[#2d5f4f]/20 via-white/[0.03] to-transparent border border-[#2d5f4f]/25 rounded-2xl p-6 shadow-[0_18px_60px_rgba(0,0,0,0.18)]">
                           <h3 className="text-xl mb-2">Vendor Media Access</h3>
                           <p className="text-sm opacity-70">
                             Curated collections shared with wedding vendors and
@@ -2101,7 +2278,7 @@ useEffect(() => {
                                 onClick={() =>
                                   setSelectedVendorCollection(collection)
                                 }
-                                className="group relative bg-white/5 border border-white/10 rounded-2xl overflow-hidden cursor-pointer hover:border-accent/50 hover:bg-white/10 transition-all"
+                                className="group relative bg-white/[0.055] border border-white/10 rounded-2xl overflow-hidden cursor-pointer shadow-[0_18px_60px_rgba(0,0,0,0.18)] hover:border-accent/50 hover:bg-white/[0.08] transition-all"
                               >
                                 {/* Cover Image */}
                                 <div className="aspect-[4/3] relative overflow-hidden">
@@ -2152,8 +2329,8 @@ useEffect(() => {
                                         daysUntilExpiry > 7
                                           ? "bg-accent/20 text-accent"
                                           : daysUntilExpiry > 3
-                                            ? "bg-orange-500/20 text-orange-300"
-                                            : "bg-red-500/20 text-red-300"
+                                            ? "bg-amber-500/10 text-amber-200"
+                                            : "bg-red-500/10 text-red-300"
                                       }`}
                                     >
                                       {daysUntilExpiry}d left
@@ -2194,7 +2371,7 @@ useEffect(() => {
                             <span>Back to Collections</span>
                           </button>
 
-                          <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
+                          <div className="bg-white/[0.055] border border-white/10 rounded-2xl p-6 shadow-[0_18px_60px_rgba(0,0,0,0.18)]">
                             <div className="flex items-start justify-between mb-4">
                               <div className="flex items-start gap-4">
                                 <div className="w-14 h-14 rounded-xl bg-accent/20 border border-accent/30 flex items-center justify-center">
@@ -2241,7 +2418,7 @@ useEffect(() => {
                                 </button>
                                 {selectedVendorCollection.permissions
                                   .download && (
-                                  <button className="flex items-center gap-2 px-4 py-2 bg-accent rounded-full text-sm hover:bg-accent/90 transition-colors">
+                                  <button className="flex items-center gap-2 px-4 py-2 bg-accent rounded-full text-sm text-white shadow-lg shadow-accent/15 hover:bg-accent/90 transition-colors">
                                     <Download className="w-4 h-4" />
                                     <span>Download All</span>
                                   </button>
@@ -2293,7 +2470,7 @@ useEffect(() => {
                                 animate={{ opacity: 1, scale: 1 }}
                                 transition={{ delay: index * 0.05 }}
                                 onClick={() => setSelectedVendorImage(image)}
-                                className="group relative aspect-square bg-white/5 border border-white/10 rounded-xl overflow-hidden cursor-pointer hover:border-accent/50 transition-all"
+                                className="group relative aspect-square bg-white/[0.055] border border-white/10 rounded-xl overflow-hidden cursor-pointer hover:border-accent/50 hover:shadow-[0_16px_40px_rgba(0,0,0,0.28)] transition-all"
                               >
                                 <img
                                   src={image.url}
@@ -2326,7 +2503,7 @@ useEffect(() => {
                         </div>
 
                         {/* Usage Guidelines */}
-                        <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
+                        <div className="bg-white/[0.055] border border-white/10 rounded-2xl p-6 shadow-[0_18px_60px_rgba(0,0,0,0.18)]">
                           <h4 className="text-base mb-3 flex items-center gap-2">
                             <Shield className="w-5 h-5 text-accent" />
                             <span>Usage Guidelines</span>
@@ -2347,14 +2524,14 @@ useEffect(() => {
                               </span>
                             </li>
                             <li className="flex items-start gap-2">
-                              <X className="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" />
+                              <X className="w-4 h-4 text-red-300 mt-0.5 flex-shrink-0" />
                               <span>
                                 Unauthorized redistribution, editing, or resale
                                 is prohibited
                               </span>
                             </li>
                             <li className="flex items-start gap-2">
-                              <X className="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" />
+                              <X className="w-4 h-4 text-red-300 mt-0.5 flex-shrink-0" />
                               <span>
                                 Commercial use beyond portfolio display requires
                                 written authorization
@@ -2365,7 +2542,7 @@ useEffect(() => {
 
                         {/* Analytics (Admin Only) */}
                         {userRole === "editor" && (
-                          <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
+                          <div className="bg-white/[0.055] border border-white/10 rounded-2xl p-6 shadow-[0_18px_60px_rgba(0,0,0,0.18)]">
                             <h4 className="text-base mb-4">Access Analytics</h4>
                             <div className="grid grid-cols-3 gap-4">
                               <div className="p-4 bg-white/5 rounded-xl">
@@ -2406,13 +2583,29 @@ useEffect(() => {
                 transition={{ duration: 0.3 }}
               >
                 <div className="space-y-4">
-                  {workflowData?.map((step, index) => {
+                  {workflowLoading ? (
+                    [0, 1, 2, 3, 4].map((workflowSkeleton) => (
+                      <div key={workflowSkeleton} className="relative bg-white/5 border border-white/10 rounded-2xl p-6">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex items-start gap-4 flex-1">
+                            <ProjectDetailShimmer className="w-12 h-12 rounded-full flex-shrink-0" />
+                            <div className="flex-1 space-y-3">
+                              <ProjectDetailShimmer className="h-6 w-52" />
+                              <ProjectDetailShimmer className="h-4 w-64" />
+                              <ProjectDetailShimmer className="h-6 w-24 rounded-full" />
+                            </div>
+                          </div>
+                          <ProjectDetailShimmer className="h-9 w-28 rounded-full" />
+                        </div>
+                      </div>
+                    ))
+                  ) : workflowData?.map((step, index) => {
                     const isCompleted = step.step_status === "completed";
                     const isInProgress = step.step_status === "in_progress";
                     const isPending = step.step_status === "pending";
                     const isLocked =
                       index > 0 &&
-                      workflowData[index - 1].status !== "completed";
+                      workflowData[index - 1].step_status !== "completed";
 
                     return (
                       <motion.div
@@ -2424,7 +2617,7 @@ useEffect(() => {
                       >
                         {/* Connection Line */}
                         {index < workflowData.length - 1 && (
-                          <div className="absolute left-6 top-16 bottom-0 w-0.5 bg-white/10">
+                          <div className="absolute left-12 z-[10] top-16 bottom-0 w-0.5 bg-white/10">
                             {isCompleted && (
                               <motion.div
                                 initial={{ height: 0 }}
@@ -2444,7 +2637,7 @@ useEffect(() => {
                             isCompleted
                               ? "border-accent/30 bg-accent/5"
                               : isInProgress
-                                ? "border-blue-500/30 bg-blue-500/5"
+                                ? "border-[#2d5f4f]/35 bg-[#2d5f4f]/10"
                                 : isLocked
                                   ? "border-white/10 opacity-50"
                                   : "border-white/10"
@@ -2454,18 +2647,18 @@ useEffect(() => {
                             <div className="flex items-start gap-4 flex-1">
                               {/* Status Icon */}
                               <div
-                                className={`flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center ${
+                                className={`flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center  z-[20] ${
                                   isCompleted
                                     ? "bg-accent/20"
                                     : isInProgress
-                                      ? "bg-blue-500/20"
+                                      ? "bg-[#2d5f4f]/20"
                                       : "bg-white/5"
                                 }`}
                               >
                                 {isCompleted ? (
                                   <CheckCircle2 className="w-6 h-6 text-accent" />
                                 ) : isInProgress ? (
-                                  <Clock className="w-6 h-6 text-blue-300" />
+                                  <Clock className="w-6 h-6 text-emerald-200" />
                                 ) : (
                                   <Circle className="w-6 h-6 opacity-30" />
                                 )}
@@ -2501,10 +2694,10 @@ useEffect(() => {
                                       isCompleted
                                         ? "bg-accent/20 text-accent"
                                         : isInProgress
-                                          ? "bg-blue-500/20 text-blue-300"
+                                          ? "bg-[#2d5f4f]/20 text-emerald-200"
                                           : isLocked
                                             ? "bg-white/5 text-white/40"
-                                            : "bg-orange-500/20 text-orange-300"
+                                            : "bg-amber-500/10 text-amber-200"
                                     }`}
                                   >
                                     {isCompleted
@@ -2522,7 +2715,7 @@ useEffect(() => {
                             {/* Action Button */}
                             {isPending && !isLocked && step.is_my_step && (
                               <button
-                                onClick={() => handleWorkflowAction("start")}
+                                onClick={() => handleWorkflowAction("start",step.project_step_id)}
                                 className="px-4 py-2 border border-white/10 rounded-full text-sm hover:bg-accent/10 hover:border-accent/30 transition-all whitespace-nowrap"
                               >
                                 Start Working
@@ -2534,7 +2727,7 @@ useEffect(() => {
                               step.is_my_step && (
                                 <button
                                   onClick={() =>
-                                   { handleWorkflowAction("working")
+                                   { handleWorkflowAction("working",step.project_step_id)
                                     fetchOverview()}
                                   }
                                   className="px-4 py-2 border border-white/10 rounded-full text-sm hover:bg-accent/10 hover:border-accent/30 transition-all whitespace-nowrap"
@@ -2544,7 +2737,7 @@ useEffect(() => {
                               )}
                             {!isCompleted && !isLocked && step.is_my_step && (
                               <button
-                                onClick={() => {handleWorkflowAction("finish")
+                                onClick={() => {handleWorkflowAction("finish",step.project_step_id)
                                   fetchOverview()
                                 }}
                                 className="px-4 py-2 border border-white/10 rounded-full text-sm hover:bg-accent/10 hover:border-accent/30 transition-all whitespace-nowrap"
@@ -2572,14 +2765,18 @@ useEffect(() => {
                 className="space-y-6"
               >
                 {/* Client Notes */}
-                <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
+                <div className="bg-white/[0.055] border border-white/10 rounded-2xl p-6 shadow-[0_18px_60px_rgba(0,0,0,0.18)]">
                   <h3 className="text-xl mb-4">Client Notes</h3>
-                  <textarea
-                    value={clientNotes}
-                    onChange={(e) => setClientNotes(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-base focus:outline-none focus:border-accent/50 transition-colors min-h-[120px] resize-y"
-                    placeholder="Add notes about the project vision, style preferences, must-have shots..."
-                  />
+                  {clientNotesLoading ? (
+                    <ProjectDetailCardShimmer className="min-h-[120px] w-full" />
+                  ) : (
+                    <textarea
+                      value={clientNotes}
+                      onChange={(e) => setClientNotes(e.target.value)}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-base focus:outline-none focus:border-accent/50 transition-colors min-h-[120px] resize-y"
+                      placeholder="Add notes about the project vision, style preferences, must-have shots..."
+                    />
+                  )}
 
                   <div className="w-full flex items-center justify-end">
                     <button
@@ -2593,12 +2790,12 @@ useEffect(() => {
                 </div>
 
                 {/* Song Selection */}
-                <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
+                <div className="bg-white/[0.055] border border-white/10 rounded-2xl p-6 shadow-[0_18px_60px_rgba(0,0,0,0.18)]">
                   <h3 className="text-xl mb-4 flex items-center gap-2">
                     <Music className="w-5 h-5" />
                     <span>Song Selection</span>
                   </h3>
-                  <div className="flex gap-3">
+                  <div className="flex flex-wrap gap-3">
                     <input
                       type="text"
                       value={songName}
@@ -2617,7 +2814,17 @@ useEffect(() => {
                   </div>
 
                     <div className="space-y-3 mt-3">
-                    {songs?.map((song, index) => (
+                    {songsLoading ? (
+                      [0, 1, 2].map((songSkeleton) => (
+                        <div key={songSkeleton} className="flex items-center gap-3 p-3 rounded-xl">
+                          <ProjectDetailShimmer className="h-5 w-5 rounded-full" />
+                          <div className="flex-1 space-y-2">
+                            <ProjectDetailShimmer className="h-4 w-48" />
+                            <ProjectDetailShimmer className="h-3 w-32" />
+                          </div>
+                        </div>
+                      ))
+                    ) : songs?.map((song, index) => (
                       <motion.div
                         key={song.moodboard_song_id}
                         initial={{ opacity: 0, x: -20 }}
@@ -2656,7 +2863,7 @@ useEffect(() => {
                 </div>
 
                 {/* Reference Uploads */}
-                <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
+                <div className="bg-white/[0.055] border border-white/10 rounded-2xl p-6 shadow-[0_18px_60px_rgba(0,0,0,0.18)]">
                 <div className="flex items-center justify-between w-full mb-4">
                     <h3 className="text-xl ">Reference Materials</h3>
 
@@ -2665,20 +2872,24 @@ useEffect(() => {
     setMoodboardModal(true)
 
                          }}
-                        className="flex items-center gap-2 px-4 py-2.5 bg-accent rounded-full text-sm hover:bg-accent/90 transition-colors">
+                        className="flex items-center gap-2 px-4 py-2.5 bg-accent rounded-full text-sm text-white shadow-lg shadow-accent/15 hover:bg-accent/90 transition-colors">
                           <Upload className="w-4 h-4" />
                           <span>Upload Assets</span>
                         </button>} 
                 </div>
                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                      {moodboardAssets?.map((asset, index) => (
+                      {moodboardAssetsLoading ? (
+                        [0, 1, 2, 3].map((moodboardAssetSkeleton) => (
+                          <ProjectDetailCardShimmer key={moodboardAssetSkeleton} className="aspect-square" />
+                        ))
+                      ) : moodboardAssets?.map((asset, index) => (
                         <motion.div
                           key={asset.file_id}
                           initial={{ opacity: 0, scale: 0.9 }}
                           animate={{ opacity: 1, scale: 1 }}
                           transition={{ delay: index * 0.05 }}
                           onClick={() => setSelectedAsset(asset)}
-                          className="group relative aspect-square bg-white/5 border border-white/10 rounded-xl overflow-hidden cursor-pointer hover:border-accent/50 transition-all"
+                          className="group relative aspect-square bg-white/[0.055] border border-white/10 rounded-xl overflow-hidden cursor-pointer hover:border-accent/50 hover:shadow-[0_16px_40px_rgba(0,0,0,0.28)] transition-all"
                         >
                           <img
                             src={asset.preview_url}
@@ -2710,7 +2921,7 @@ useEffect(() => {
                 </div>
 
                 {/* Comments Thread */}
-                <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
+                <div className="bg-white/[0.055] border border-white/10 rounded-2xl p-6 shadow-[0_18px_60px_rgba(0,0,0,0.18)]">
                   <h3 className="text-xl mb-4 flex items-center gap-2">
                     <MessageSquare className="w-5 h-5" />
                     <span>Moodboard Discussion</span>
@@ -2718,7 +2929,19 @@ useEffect(() => {
 
                   {/* Comments List */}
                   <div className="space-y-4 mb-6">
-                    {discussions?.map((comment, index) => (
+                    {discussionsLoading ? (
+                      [0, 1, 2].map((discussionSkeleton) => (
+                        <div key={discussionSkeleton} className="p-4 rounded-xl bg-white/5">
+                          <div className="flex items-start gap-3">
+                            <ProjectDetailShimmer className="w-8 h-8 rounded-full" />
+                            <div className="flex-1 space-y-2">
+                              <ProjectDetailShimmer className="h-4 w-48" />
+                              <ProjectDetailShimmer className="h-4 w-full" />
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    ) : discussions?.map((comment, index) => (
                       <motion.div
                         key={comment.discussion_id}
                         initial={{ opacity: 0, y: 10 }}
@@ -2767,7 +2990,7 @@ useEffect(() => {
                   </div>
 
                   {/* Add Comment */}
-                  <div className="flex gap-3">
+                  <div className="flex flex-wrap gap-3">
                     <input
                       type="text"
                       value={message}
@@ -2802,10 +3025,15 @@ useEffect(() => {
               >
                 {/* Production Summary Card */}
               
-                  <div className="bg-gradient-to-br from-accent/10 to-transparent border border-accent/20 rounded-2xl p-6">
+                  <div className="bg-gradient-to-br from-[#2d5f4f]/20 via-white/[0.03] to-transparent border border-[#2d5f4f]/25 rounded-2xl p-6 shadow-[0_18px_60px_rgba(0,0,0,0.18)]">
                     <h3 className="text-xl mb-4">Production Overview</h3>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    
+                    {overviewLoading ? (
+                      [0, 1, 2, 3].map((productionOverviewSkeleton) => (
+                        <ProjectDetailCardShimmer key={productionOverviewSkeleton} className="h-24" />
+                      ))
+                    ) : (
+                      <>
 
                        <div
        
@@ -2844,13 +3072,40 @@ useEffect(() => {
       </div>
     )
   )}
+                      </>
+                    )}
                     </div>
                   </div>
                 
 
                 {/* Crew Members Production Setup */}
                 <div className="space-y-6">
-                  {productionSetup?.map((member, index) => (
+                  {productionLoading ? (
+                    [0, 1, 2].map((productionSetupSkeleton) => (
+                      <div key={productionSetupSkeleton} className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
+                        <div className="p-6 border-b border-white/10 bg-white/5">
+                          <div className="flex items-center justify-between gap-4">
+                            <div className="flex items-center gap-4">
+                              <ProjectDetailShimmer className="w-14 h-14 rounded-full" />
+                              <div className="space-y-3">
+                                <ProjectDetailShimmer className="h-6 w-48" />
+                                <ProjectDetailShimmer className="h-6 w-24 rounded-full" />
+                              </div>
+                            </div>
+                            <ProjectDetailShimmer className="h-9 w-24 rounded-full" />
+                          </div>
+                        </div>
+                        <div className="p-6 space-y-4">
+                          <ProjectDetailShimmer className="h-4 w-28" />
+                          <div className="flex flex-wrap gap-2">
+                            {[0, 1, 2, 3].map((gearPillSkeleton) => (
+                              <ProjectDetailShimmer key={gearPillSkeleton} className="h-8 w-24 rounded-lg" />
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  ) : productionSetup?.map((member, index) => (
                     <motion.div
                       key={member.member_id}
                       initial={{ opacity: 0, y: 20 }}
@@ -2915,7 +3170,18 @@ useEffect(() => {
                         {editingCrew === member.member_id ? (
                           // Admin Edit Mode
                           <div className="space-y-6">
-                            {(
+                            {gearsLoading ? (
+                              [0, 1, 2].map((gearCategorySkeleton) => (
+                                <div key={gearCategorySkeleton} className="space-y-3">
+                                  <ProjectDetailShimmer className="h-5 w-32" />
+                                  <div className="grid md:grid-cols-2 gap-2">
+                                    {[0, 1, 2, 3].map((gearOptionSkeleton) => (
+                                      <ProjectDetailCardShimmer key={gearOptionSkeleton} className="h-12" />
+                                    ))}
+                                  </div>
+                                </div>
+                              ))
+                            ) : (
                               Object.keys(allGears) as Array<
                                 keyof typeof allGears
                               >
@@ -3028,7 +3294,7 @@ useEffect(() => {
 
                 {/* Admin Controls */}
              
-                  {/* <div className="flex gap-3">
+                  {/* <div className="flex flex-wrap gap-3">
                     <button className="flex items-center gap-2 px-4 py-2.5 border border-white/10 rounded-full text-sm hover:bg-white/5 transition-all">
                       <Plus className="w-4 h-4" />
                       <span>Add Crew Member</span>
@@ -3053,7 +3319,7 @@ useEffect(() => {
                 className="space-y-6"
               >
                 {/* Travel Summary Card */}
-                <div className="bg-gradient-to-br from-accent/10 to-transparent border border-accent/20 rounded-2xl p-6">
+                <div className="bg-gradient-to-br from-[#2d5f4f]/20 via-white/[0.03] to-transparent border border-[#2d5f4f]/25 rounded-2xl p-6 shadow-[0_18px_60px_rgba(0,0,0,0.18)]">
                   <div className="flex items-start justify-between mb-6">
                     <div className="flex items-center gap-3">
                       <div className="w-12 h-12 rounded-xl bg-accent/20 flex items-center justify-center">
@@ -3074,6 +3340,25 @@ useEffect(() => {
                     )}
                   </div>
 
+                  {travelDataLoading ? (
+                    <div className="space-y-6">
+                      <div className="grid md:grid-cols-2 gap-6 mb-6">
+                        <div className="space-y-3">
+                          <ProjectDetailShimmer className="h-4 w-16" />
+                          <ProjectDetailShimmer className="h-5 w-56" />
+                          <ProjectDetailShimmer className="h-4 w-12 mt-4" />
+                          <ProjectDetailShimmer className="h-5 w-64" />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          {[0, 1, 2, 3].map((travelStatSkeleton) => (
+                            <ProjectDetailCardShimmer key={travelStatSkeleton} className="h-24" />
+                          ))}
+                        </div>
+                      </div>
+                      <ProjectDetailCardShimmer className="h-28 w-full" />
+                    </div>
+                  ) : (
+                    <>
                   <div className="grid md:grid-cols-2 gap-6 mb-6">
                     <div className="space-y-3">
                       <div>
@@ -3149,6 +3434,8 @@ useEffect(() => {
                         </div>
                       </div>
                     </div>
+                    </>
+                  )}
                   
                 </div>
 
@@ -3156,7 +3443,11 @@ useEffect(() => {
                 <div>
                   <h3 className="text-lg mb-4 opacity-80">Crew Members</h3>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    {travelData?.team_members?.map((crew,i) => (
+                    {travelDataLoading ? (
+                      [0, 1, 2].map((travelCrewSkeleton) => (
+                        <ProjectDetailCardShimmer key={travelCrewSkeleton} className="h-20" />
+                      ))
+                    ) : travelData?.team_members?.map((crew,i) => (
                       <button
                         key={i}
                        
@@ -3188,7 +3479,7 @@ crew.member_name?.split(" ").slice(-1)[0]?.[0] || ""
                 </div>
 
                 {/* Selected Crew Travel Timeline */}
-               <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
+               <div className="bg-white/[0.055] border border-white/10 rounded-2xl p-6 shadow-[0_18px_60px_rgba(0,0,0,0.18)]">
                   <h3 className="text-xl mb-4 flex items-center gap-2">
                     <MapPinHouse className="w-5 h-5" />
                     <span>Travel Discussions</span>
@@ -3196,7 +3487,19 @@ crew.member_name?.split(" ").slice(-1)[0]?.[0] || ""
 
                   {/* Comments List */}
                   <div className="space-y-4 mb-6">
-                    {travelDiscussions?.map((comment, index) => (
+                    {travelLoading ? (
+                      [0, 1, 2].map((travelDiscussionSkeleton) => (
+                        <div key={travelDiscussionSkeleton} className="p-4 rounded-xl bg-white/5">
+                          <div className="flex items-start gap-3">
+                            <ProjectDetailShimmer className="w-8 h-8 rounded-full" />
+                            <div className="flex-1 space-y-2">
+                              <ProjectDetailShimmer className="h-4 w-48" />
+                              <ProjectDetailShimmer className="h-4 w-full" />
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    ) : travelDiscussions?.map((comment, index) => (
                       <motion.div
                         key={comment.travel_discussion_id}
                         initial={{ opacity: 0, y: 10 }}
@@ -3245,7 +3548,7 @@ crew.member_name?.split(" ").slice(-1)[0]?.[0] || ""
                   </div>
 
                   {/* Add Comment */}
-                  <div className="flex gap-3">
+                  <div className="flex flex-wrap gap-3">
                     <input
                       type="text"
                       value={travelmessage}
@@ -3277,7 +3580,7 @@ crew.member_name?.split(" ").slice(-1)[0]?.[0] || ""
                 exit={{ opacity: 0, y: -20 }}
                 transition={{ duration: 0.3 }}
               >
-                <div className="bg-white/5 border border-white/10 rounded-2xl p-8 md:p-12 max-w-4xl mx-auto">
+                <div className="bg-white/[0.055] border border-white/10 rounded-2xl p-8 md:p-12 max-w-4xl mx-auto shadow-[0_24px_80px_rgba(0,0,0,0.22)]">
                   {/* Invoice Header */}
                   <div className="border-b border-white/10 pb-8 mb-8">
                     <div className="flex justify-between items-start mb-6">
@@ -3323,8 +3626,8 @@ crew.member_name?.split(" ").slice(-1)[0]?.[0] || ""
                             invoiceData.paymentStatus === "Paid"
                               ? "bg-accent/20 text-accent"
                               : invoiceData.paymentStatus === "Partially Paid"
-                                ? "bg-blue-500/20 text-blue-300"
-                                : "bg-orange-500/20 text-orange-300"
+                                ? "bg-[#2d5f4f]/20 text-emerald-200"
+                                : "bg-amber-500/10 text-amber-200"
                           }`}
                         >
                           {invoiceData.paymentStatus}
@@ -3415,7 +3718,7 @@ crew.member_name?.split(" ").slice(-1)[0]?.[0] || ""
                           </div>
                           <div className="flex justify-between text-lg border-t border-white/10 pt-3">
                             <span>Balance Due</span>
-                            <span className="text-orange-300">
+                            <span className="text-amber-200">
                               $
                               {(
                                 invoiceData.total - invoiceData.amountPaid
@@ -3467,7 +3770,7 @@ crew.member_name?.split(" ").slice(-1)[0]?.[0] || ""
                 exit={{ opacity: 0, y: -20 }}
                 transition={{ duration: 0.3 }}
               >
-                <div className="bg-white/5 border border-white/10 rounded-2xl p-8 md:p-12 max-w-4xl mx-auto">
+                <div className="bg-white/[0.055] border border-white/10 rounded-2xl p-8 md:p-12 max-w-4xl mx-auto shadow-[0_24px_80px_rgba(0,0,0,0.22)]">
                   {/* Contract Title */}
                   <div className="text-center mb-12 border-b border-white/10 pb-8">
                     <h2 className="text-3xl md:text-4xl mb-4">
@@ -3687,7 +3990,7 @@ crew.member_name?.split(" ").slice(-1)[0]?.[0] || ""
                 className="space-y-6"
               >
                 {/* Business License */}
-                <div className="bg-white/5 border border-white/10 rounded-2xl p-8">
+                <div className="bg-white/[0.055] border border-white/10 rounded-2xl p-8 shadow-[0_18px_60px_rgba(0,0,0,0.18)]">
                   <div className="flex items-start gap-4 mb-6">
                     <div className="w-12 h-12 rounded-xl bg-accent/20 flex items-center justify-center">
                       <Shield className="w-6 h-6 text-accent" />
@@ -3722,10 +4025,10 @@ crew.member_name?.split(" ").slice(-1)[0]?.[0] || ""
                 </div>
 
                 {/* Insurance */}
-                <div className="bg-white/5 border border-white/10 rounded-2xl p-8">
+                <div className="bg-white/[0.055] border border-white/10 rounded-2xl p-8 shadow-[0_18px_60px_rgba(0,0,0,0.18)]">
                   <div className="flex items-start gap-4 mb-6">
-                    <div className="w-12 h-12 rounded-xl bg-blue-500/20 flex items-center justify-center">
-                      <Shield className="w-6 h-6 text-blue-300" />
+                    <div className="w-12 h-12 rounded-xl bg-[#2d5f4f]/20 flex items-center justify-center">
+                      <Shield className="w-6 h-6 text-emerald-200" />
                     </div>
                     <div className="flex-1">
                       <h3 className="text-xl mb-1">
@@ -3778,10 +4081,10 @@ crew.member_name?.split(" ").slice(-1)[0]?.[0] || ""
                 </div>
 
                 {/* Certifications */}
-                <div className="bg-white/5 border border-white/10 rounded-2xl p-8">
+                <div className="bg-white/[0.055] border border-white/10 rounded-2xl p-8 shadow-[0_18px_60px_rgba(0,0,0,0.18)]">
                   <div className="flex items-start gap-4 mb-6">
-                    <div className="w-12 h-12 rounded-xl bg-purple-500/20 flex items-center justify-center">
-                      <FileText className="w-6 h-6 text-purple-300" />
+                    <div className="w-12 h-12 rounded-xl bg-[#2d5f4f]/15 flex items-center justify-center">
+                      <FileText className="w-6 h-6 text-emerald-100" />
                     </div>
                     <div className="flex-1">
                       <h3 className="text-xl mb-1">
@@ -3814,7 +4117,7 @@ crew.member_name?.split(" ").slice(-1)[0]?.[0] || ""
                 </div>
 
                 {/* Document Attachments */}
-                <div className="bg-white/5 border border-white/10 rounded-2xl p-8">
+                <div className="bg-white/[0.055] border border-white/10 rounded-2xl p-8 shadow-[0_18px_60px_rgba(0,0,0,0.18)]">
                   <h3 className="text-xl mb-4">Document Attachments</h3>
                   <div className="space-y-3">
                     <div className="flex items-center justify-between p-4 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 transition-all cursor-pointer">
@@ -3876,6 +4179,184 @@ crew.member_name?.split(" ").slice(-1)[0]?.[0] || ""
   }
 />
 
+
+  {/* Edit Project Modal */}
+      <AnimatePresence>
+        {showEditModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4"
+            onClick={() => setShowEditModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 16 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 16 }}
+              transition={{ type: "spring", damping: 28, stiffness: 300 }}
+              onClick={(e) => e.stopPropagation()}
+              className="relative bg-[#0e0e0e] border border-white/10 rounded-3xl p-8 max-w-lg w-full shadow-2xl"
+            >
+              <div className="flex items-center justify-between mb-7">
+                <h2 className="text-2xl">Edit Project</h2>
+                <button onClick={() => setShowEditModal(false)} className="w-9 h-9 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center transition-colors">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="space-y-5">
+                <div>
+                  <label className="text-xs tracking-widest opacity-50 mb-2 block">CLIENT NAME</label>
+                  <input
+                    type="text"
+                    value={editDraft.client_name}
+                    onChange={(e) => setEditDraft((p) => ({ ...p, client_name: e.target.value }))}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-base focus:outline-none focus:border-accent/50 transition-colors"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs tracking-widest opacity-50 mb-2 block">EVENT TYPE</label>
+                    <select
+                      value={editDraft.event_name}
+                      onChange={(e) => setEditDraft((p) => ({ ...p, event_name: e.target.value }))}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-base focus:outline-none focus:border-accent/50 transition-colors appearance-none"
+                    >
+                      {["Wedding", "Pre-wedding", "Portrait", "Event", "Commercial", "Music Video"].map((t) => (
+                        <option key={t} value={t} className="bg-[#0e0e0e]">{t}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs tracking-widest opacity-50 mb-2 block">EVENT DATE</label>
+                    <input
+                      type="date"
+                      value={editDraft.event_date}
+                      onChange={(e) => setEditDraft((p) => ({ ...p, event_date: e.target.value }))}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-base focus:outline-none focus:border-accent/50 transition-colors"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-xs tracking-widest opacity-50 mb-2 block">LOCATION</label>
+                  <input
+                    type="text"
+                    value={editDraft.event_location}
+                    onChange={(e) => setEditDraft((p) => ({ ...p, event_location: e.target.value }))}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-base focus:outline-none focus:border-accent/50 transition-colors"
+                  />
+                </div>
+
+               
+              </div>
+
+              <div className="flex gap-3 mt-8">
+                <button
+                  onClick={() => setShowEditModal(false)}
+                  className="flex-1 py-3 rounded-full border border-white/10 text-sm hover:bg-white/5 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={saveEditModal}
+                  className="flex-1 py-3 rounded-full bg-accent text-sm hover:bg-accent/90 transition-colors flex items-center justify-center gap-2 shadow-lg shadow-accent/20"
+                >
+                  <Save className="w-4 h-4" />
+                  {savingEdit ? 'Saving...':'Save Changes'}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Add Step Modal */}
+      <AnimatePresence>
+        {showAddStepModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4"
+            onClick={() => setShowAddStepModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 16 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 16 }}
+              transition={{ type: "spring", damping: 28, stiffness: 300 }}
+              onClick={(e) => e.stopPropagation()}
+              className="relative bg-[#0e0e0e] border border-white/10 rounded-3xl p-8 max-w-md w-full shadow-2xl"
+            >
+              <div className="flex items-center justify-between mb-7">
+                <h2 className="text-2xl">Add Workflow Step</h2>
+                <button onClick={() => setShowAddStepModal(false)} className="w-9 h-9 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center transition-colors">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="space-y-5">
+                <div>
+                  <label className="text-xs tracking-widest opacity-50 mb-2 block">STEP NAME</label>
+                  <input
+                    type="text"
+                    value={newStepName}
+                    onChange={(e) => setNewStepName(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && saveAddStep()}
+                    placeholder="e.g. Client Review, Final Export..."
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-base focus:outline-none focus:border-accent/50 transition-colors"
+                    autoFocus
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs tracking-widest opacity-50 mb-2 block">ASSIGN TO</label>
+                  <select
+                    value={newStepAssignee}
+                    onChange={(e) => setNewStepAssignee(e.target.value)}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-base focus:outline-none focus:border-accent/50 transition-colors appearance-none"
+                  >
+                    {["Sarah Chen", "Mike Rodriguez", "Emily Lee", "Jordan Park", "David Kim"].map((name) => (
+                      <option key={name} value={name} className="bg-[#0e0e0e]">{name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="p-4 bg-white/5 border border-white/10 rounded-xl">
+                  <p className="text-xs opacity-50 mb-1">Position</p>
+                  <p className="text-sm opacity-80">Will be added at the end of the workflow as Step {workflowSteps.length + 1}</p>
+                </div>
+              </div>
+
+              <div className="flex gap-3 mt-8">
+                <button
+                  onClick={() => setShowAddStepModal(false)}
+                  className="flex-1 py-3 rounded-full border border-white/10 text-sm hover:bg-white/5 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                
+                  disabled={!newStepName.trim()}
+                  className={`flex-1 py-3 rounded-full text-sm flex items-center justify-center gap-2 transition-colors ${
+                    newStepName.trim()
+                      ? "bg-accent hover:bg-accent/90 shadow-lg shadow-accent/20"
+                      : "bg-white/5 opacity-40 cursor-not-allowed"
+                  }`}
+                >
+                  <Plus className="w-4 h-4" />
+                  Add Step
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+
       {/* Vendor Access Modal */}
       <AnimatePresence>
         {showVendorModal && !vendorAgreed && (
@@ -3889,7 +4370,7 @@ crew.member_name?.split(" ").slice(-1)[0]?.[0] || ""
               initial={{ scale: 0.9, y: 20 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.9, y: 20 }}
-              className="relative bg-background border border-accent/20 rounded-3xl p-8 md:p-12 max-w-2xl w-full shadow-2xl shadow-accent/10"
+              className="relative bg-[#07100d] border border-accent/25 rounded-3xl p-8 md:p-12 max-w-2xl w-full shadow-2xl shadow-accent/10"
             >
               {/* Close button */}
               <button
@@ -3956,7 +4437,7 @@ crew.member_name?.split(" ").slice(-1)[0]?.[0] || ""
               </div>
 
               {/* Actions */}
-              <div className="flex gap-3">
+              <div className="flex flex-wrap gap-3">
                 <button
                   onClick={() => {
                     setShowVendorModal(false);
@@ -3998,7 +4479,7 @@ crew.member_name?.split(" ").slice(-1)[0]?.[0] || ""
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setSelectedAsset(null)}
-            className="fixed inset-0 z-50 bg-black/90 bg] flex items-center justify-center p-4"
+            className="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm flex items-center justify-center p-4"
           >
             <motion.div
               initial={{ scale: 0.9 }}
@@ -4037,7 +4518,7 @@ crew.member_name?.split(" ").slice(-1)[0]?.[0] || ""
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setSelectedVendorImage(null)}
-            className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
+            className="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm flex items-center justify-center p-4"
           >
             <motion.div
               initial={{ scale: 0.9 }}
@@ -4074,7 +4555,7 @@ crew.member_name?.split(" ").slice(-1)[0]?.[0] || ""
                   </p>
                 </div>
                 {selectedVendorCollection.permissions.download && (
-                  <button className="flex items-center gap-2 px-4 py-2 bg-accent rounded-full text-sm hover:bg-accent/90 transition-colors">
+                  <button className="flex items-center gap-2 px-4 py-2 bg-accent rounded-full text-sm text-white shadow-lg shadow-accent/15 hover:bg-accent/90 transition-colors">
                     <Download className="w-4 h-4" />
                     <span>Download</span>
                   </button>

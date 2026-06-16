@@ -158,11 +158,12 @@ export const getClientHeader = async (
 
 export const updateWorkflowStatus = async (
   clientId,
-  action
+  action,
+  step_id
 ) => {
   try {
     const response = await api.post(
-      `/project/${clientId}/workflow-action`,
+      `/project/${clientId}/workflow-action/${step_id}`,
       {
         action,
       }
@@ -718,6 +719,28 @@ export const clientLogin =
         error.response?.data
           ?.message ||
           "Download failed"
+      );
+    }
+  };
+
+  export const updateClient =
+  async (
+    clientId,
+    clientData
+  ) => {
+    try {
+      const response =
+        await api.put(
+          `client/updateclients/${clientId}`,
+          clientData
+        );
+
+      return response.data;
+    } catch (error) {
+      throw new Error(
+        error.response?.data
+          ?.message ||
+          "Failed to update client"
       );
     }
   };
