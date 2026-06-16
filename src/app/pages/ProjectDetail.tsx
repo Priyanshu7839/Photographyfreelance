@@ -2713,10 +2713,11 @@ useEffect(() => {
                             </div>
 
                             {/* Action Button */}
-                            {isPending && !isLocked && step.is_my_step && (
+                           <div className="flex items-center gap-2 md:flex-row flex-col">
+                             {isPending && !isLocked && step.is_my_step && (
                               <button
                                 onClick={() => handleWorkflowAction("start",step.project_step_id)}
-                                className="px-4 py-2 border border-white/10 rounded-full text-sm hover:bg-accent/10 hover:border-accent/30 transition-all whitespace-nowrap"
+                                className="px-4 py-2 border w-full border-white/10 rounded-full text-sm hover:bg-accent/10 hover:border-accent/30 transition-all whitespace-nowrap"
                               >
                                 Start Working
                               </button>
@@ -2730,7 +2731,7 @@ useEffect(() => {
                                    { handleWorkflowAction("working",step.project_step_id)
                                     fetchOverview()}
                                   }
-                                  className="px-4 py-2 border border-white/10 rounded-full text-sm hover:bg-accent/10 hover:border-accent/30 transition-all whitespace-nowrap"
+                                  className="px-4 w-full py-2 border border-white/10 rounded-full text-sm hover:bg-accent/10 hover:border-accent/30 transition-all whitespace-nowrap"
                                 >
                                   Mark Activity
                                 </button>
@@ -2740,11 +2741,12 @@ useEffect(() => {
                                 onClick={() => {handleWorkflowAction("finish",step.project_step_id)
                                   fetchOverview()
                                 }}
-                                className="px-4 py-2 border border-white/10 rounded-full text-sm hover:bg-accent/10 hover:border-accent/30 transition-all whitespace-nowrap"
+                                className="px-4 w-full py-2 border border-white/10 rounded-full text-sm hover:bg-accent/10 hover:border-accent/30 transition-all whitespace-nowrap"
                               >
-                                Mark as Complete
+                                Mark Complete
                               </button>
                             )}
+                           </div>
                           </div>
                         </div>
                       </motion.div>
@@ -4265,7 +4267,7 @@ crew.member_name?.split(" ").slice(-1)[0]?.[0] || ""
                   className="flex-1 py-3 rounded-full bg-accent text-sm hover:bg-accent/90 transition-colors flex items-center justify-center gap-2 shadow-lg shadow-accent/20"
                 >
                   <Save className="w-4 h-4" />
-                  {savingEdit ? 'Saving...':'Save Changes'}
+                  {savingEdit ? 'Saving...':'Save'}
                 </button>
               </div>
             </motion.div>
