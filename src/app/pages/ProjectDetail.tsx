@@ -4158,10 +4158,10 @@ crew.member_name?.split(" ").slice(-1)[0]?.[0] || ""
 
                   {/* Actions */}
                   <div className="mt-8 flex gap-3">
-                    <button className="flex items-center gap-2 px-4 py-2.5 border border-white/10 rounded-full text-sm hover:bg-white/5 transition-all">
+                    {/* <button className="flex items-center gap-2 px-4 py-2.5 border border-white/10 rounded-full text-sm hover:bg-white/5 transition-all">
                       <Download className="w-4 h-4" />
                       <span>Download PDF</span>
-                    </button>
+                    </button> */}
                   </div>
                 </div>
               </motion.div>
@@ -4344,12 +4344,12 @@ crew.member_name?.split(" ").slice(-1)[0]?.[0] || ""
                   </div>
 
                   {/* Actions */}
-                  <div className="mt-8 flex gap-3">
+                  {/* <div className="mt-8 flex gap-3">
                     <button className="flex items-center gap-2 px-4 py-2.5 border border-white/10 rounded-full text-sm hover:bg-white/5 transition-all">
                       <Download className="w-4 h-4" />
                       <span>Download PDF</span>
                     </button>
-                  </div>
+                  </div> */}
                 </div>
               </motion.div>
             )}
