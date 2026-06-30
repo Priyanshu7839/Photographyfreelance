@@ -1,5 +1,5 @@
 import { motion, useScroll, useTransform, AnimatePresence } from "motion/react";
-import { Camera, Video, User, ArrowRight, Check, TrendingUp, Phone, Mail } from "lucide-react";
+import { Camera, Video, User, ArrowRight, Check, TrendingUp, Phone, Mail, Menu } from "lucide-react";
 import { useRef, useState, useEffect } from "react";
 import { Link } from "react-router";
 import TestimonialCarousel3D from "../components/TestimonialCarousel3D";
@@ -94,6 +94,8 @@ const isMobile = window.matchMedia("(max-width: 600px)").matches;
     { number: "05", title: "Delivery & Access", description: "Organized delivery system with ongoing client access." }
   ];
 
+
+  const [MenuOpen,setMenuOpen] = useState(false)
   return (
     <div className="relative bg-background text-foreground">
       {/* Navigation */}
@@ -102,9 +104,22 @@ const isMobile = window.matchMedia("(max-width: 600px)").matches;
         animate={{ y: 0 }}
         className="fixed top-0 left-0 right-0 z-50 px-4 md:px-6 py-4 md:py-6 flex items-center justify-between backdrop-blur-sm bg-background/80"
       >
+        <Menu onClick={()=>{setMenuOpen(!MenuOpen)}}/>
+            {MenuOpen &&<motion.div 
+             initial={{ y: -100 }}
+        animate={{ y: 0 }}
+            className="flex flex-col gap-2  p-3 rounded-xl text-accent absolute top-full bg-white">
+          <a onClick={()=>{setMenuOpen(!MenuOpen)}} href="#portfolio" className="block text-sm opacity-70 hover:opacity-100  transition-opacity">Portfolio</a>
+          <a onClick={()=>{setMenuOpen(!MenuOpen)}} href="#services" className="block text-sm opacity-70 hover:opacity-100 transition-opacity">Services</a>
+          <a onClick={()=>{setMenuOpen(!MenuOpen)}} href="#process" className="block text-sm opacity-70 hover:opacity-100 transition-opacity">Process</a>
+          <Link onClick={()=>{setMenuOpen(!MenuOpen)}} to="/workspace" className="block text-sm opacity-70 hover:opacity-100 transition-opacity">
+            Enter Workspace
+          </Link>
+            </motion.div>}
+
         <Link to="/" className="text-xl md:text-2xl tracking-tight">Midori Media</Link>
         <div className="flex gap-4 md:gap-8 items-center">
-          <a href="#portfolio" className="hidden sm:block text-sm opacity-70 hover:opacity-100 transition-opacity">Portfolio</a>
+          <a href="#portfolio" className="hidden sm:block text-sm opacity-70 hover:opacity-100 transition-opacity ">Portfolio</a>
           <a href="#services" className="hidden sm:block text-sm opacity-70 hover:opacity-100 transition-opacity">Services</a>
           <a href="#process" className="hidden md:block text-sm opacity-70 hover:opacity-100 transition-opacity">Process</a>
           <Link to="/workspace" className="hidden lg:block text-sm opacity-70 hover:opacity-100 transition-opacity">
@@ -112,14 +127,12 @@ const isMobile = window.matchMedia("(max-width: 600px)").matches;
           </Link>
           <Link
             to="/wedding-builder"
-            className="hidden sm:flex items-center gap-1.5 border border-accent/50 text-accent px-4 md:px-5 py-2 md:py-2.5 text-xs md:text-sm rounded-full hover:bg-accent/10 hover:border-accent transition-all duration-300"
+            className="flex items-center gap-1.5 border border-accent/50 text-accent px-4 md:px-5 py-2 md:py-2.5 text-xs md:text-sm rounded-full hover:bg-accent/10 hover:border-accent transition-all duration-300"
             style={{ boxShadow: "0 0 16px rgba(45,95,79,0.15)" }}
           >
             <span>Build Your Package</span>
           </Link>
-          <Link to="/booking" className="bg-accent px-4 md:px-6 py-2 md:py-2.5 text-xs md:text-sm hover:bg-accent/90 transition-colors rounded-full">
-            Book a Shoot
-          </Link>
+        
         </div>
       </motion.nav>
 

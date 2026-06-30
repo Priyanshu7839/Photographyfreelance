@@ -63,8 +63,15 @@ return(
           <Link to="/" className="hidden sm:block text-sm opacity-70 hover:opacity-100 transition-opacity">Home</Link>
           <Link to="/dashboard" className="hidden sm:block text-sm opacity-70 hover:opacity-100 transition-opacity">Dashboard</Link>
           {/* <a href="#team" className="hidden md:block text-sm opacity-70 hover:opacity-100 transition-opacity">Team</a> */}
-          <Link to="/booking" className="bg-accent px-4 md:px-6 py-2 md:py-2.5 text-xs md:text-sm hover:bg-accent/90 transition-colors rounded-full">
+          {/* <Link to="/booking" className="bg-accent px-4 md:px-6 py-2 md:py-2.5 text-xs md:text-sm hover:bg-accent/90 transition-colors rounded-full">
             Book a Shoot
+          </Link> */}
+           <Link
+            to="/wedding-builder"
+            className="hidden sm:flex items-center gap-1.5 border border-accent/50 text-accent px-4 md:px-5 py-2 md:py-2.5 text-xs md:text-sm rounded-full hover:bg-accent/10 hover:border-accent transition-all duration-300"
+            style={{ boxShadow: "0 0 16px rgba(45,95,79,0.15)" }}
+          >
+            <span>Build Your Package</span>
           </Link>
 
           <div className="relative">

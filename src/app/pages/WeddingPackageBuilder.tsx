@@ -10,6 +10,7 @@ import {
   Plus,
   Minus,
   ArrowRight,
+  ArrowLeft,
   X,
   Clock,
   Image,
@@ -22,6 +23,10 @@ import {
   ChevronDown,
   ChevronUp,
   Sparkles,
+  MapPin,
+  Mail,
+  User,
+  CheckCircle2,
 } from "lucide-react";
 import { Link } from "react-router";
 
@@ -121,7 +126,7 @@ const SERVICE_TYPES: ServiceType[] = [
         highlight: true,
         features: [
           "8 Hours Coverage",
-          "3 Photographer",
+          "1 Photographer",
           "400+ Edited Photos",
           "1 Week Turnaround",
         ],
@@ -131,9 +136,9 @@ const SERVICE_TYPES: ServiceType[] = [
         name: "Tier 2",
         price: 1200,
         features: [
-          "6 Hours Coverage",
+          "8 Hours Coverage",
           "1 Photographer",
-          "200+ Edited Photos",
+          "400+ Edited Photos",
           "1 Week Turnaround",
         ],
         note: "Video Add-On Available",
@@ -146,7 +151,7 @@ const SERVICE_TYPES: ServiceType[] = [
           "4 Hours Coverage",
           "1 Photographer",
           "50–150 Photos",
-          "2 Week Turnaround",
+          "1 Week Turnaround",
         ],
         note: "Video Add-On Available",
       },
@@ -551,7 +556,7 @@ function SummaryCard({
 
       {/* CTAs */}
       <div className="px-6 pb-6 space-y-3">
-        {/* <motion.button
+        <motion.button
           onClick={onBook}
           disabled={!selectedPackage}
           whileHover={selectedPackage ? { scale: 1.02 } : {}}
@@ -562,17 +567,366 @@ function SummaryCard({
               : "bg-white/5 text-white/20 cursor-not-allowed"
           }`}
         >
-          Book This Package
-          <ArrowRight size={16} />
-        </motion.button> */}
-        <Link
-          to="/booking"
-          className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-white/12 text-white/50 text-sm hover:border-white/25 hover:text-white/80 transition-all duration-200"
-        >
-          Request Custom Quote
-        </Link>
+          {selectedPackage ? "Book This Package" : "Select a Package to Continue"}
+          {selectedPackage && <ArrowRight size={16} />}
+        </motion.button>
       </div>
     </div>
+  );
+}
+
+// ─── Booking Modal ─────────────────────────────────────────────────────────────
+
+interface BookingFormData {
+  name: string;
+  email: string;
+  phone: string;
+  location: string;
+  date: string;
+  notes: string;
+}
+
+function BookingModal({
+  serviceType,
+  selectedPackage,
+  addOns,
+  total,
+  onClose,
+}: {
+  serviceType: ServiceType | null;
+  selectedPackage: Package | null;
+  addOns: string[];
+  total: number;
+  onClose: () => void;
+}) {
+  const [step, setStep] = useState(1);
+  const [submitted, setSubmitted] = useState(false);
+  const [form, setForm] = useState<BookingFormData>({
+    name: "",
+    email: "",
+    phone: "",
+    location: "",
+    date: "",
+    notes: "",
+  });
+
+  const selectedAddOns = addOns.map((id) => ADD_ONS.find((a) => a.id === id)!).filter(Boolean);
+
+  function update(field: keyof BookingFormData, value: string) {
+    setForm((prev) => ({ ...prev, [field]: value }));
+  }
+
+  function canProceed() {
+    if (step === 1) return form.name.trim() && form.email.trim();
+    if (step === 2) return form.phone.trim() && form.location.trim();
+    return true;
+  }
+
+  const inputCls =
+    "w-full bg-white/[0.04] border border-white/12 rounded-xl px-4 py-3 text-sm text-white placeholder-white/25 outline-none focus:border-accent/60 focus:bg-white/[0.06] transition-all duration-200";
+
+  const labelCls = "block text-xs tracking-[0.15em] uppercase text-white/35 mb-2";
+
+  if (submitted) {
+    return (
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      >
+        <div className="absolute inset-0 bg-black/70 backdrop-blur-md" onClick={onClose} />
+        <motion.div
+          initial={{ scale: 0.9, opacity: 0, y: 20 }}
+          animate={{ scale: 1, opacity: 1, y: 0 }}
+          transition={{ type: "spring", damping: 25, stiffness: 280, delay: 0.05 }}
+          className="relative w-full max-w-md bg-[#0c0f0d] border border-white/10 rounded-3xl overflow-hidden"
+        >
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-64 bg-accent/10 rounded-full blur-[80px] pointer-events-none" />
+          <div className="relative px-8 py-12 text-center">
+            <motion.div
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ delay: 0.2, type: "spring", damping: 20 }}
+              className="w-16 h-16 rounded-full bg-accent/15 border border-accent/30 flex items-center justify-center mx-auto mb-6"
+            >
+              <CheckCircle2 size={28} className="text-accent" />
+            </motion.div>
+            <motion.h2
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="text-2xl font-light text-white mb-3"
+            >
+              Request Received
+            </motion.h2>
+            <motion.p
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+              className="text-sm text-white/45 leading-relaxed mb-8"
+            >
+              Thank you, {form.name.split(" ")[0]}. Your inquiry for the{" "}
+              <span className="text-white/70">{selectedPackage?.name}</span> package has been
+              received. Our team will review your details and reach out within 24 hours to
+              confirm availability and walk you through next steps.
+            </motion.p>
+            <motion.div
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5 }}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/8 mb-8"
+            >
+              <span className="text-xs text-white/40">{serviceType?.label}</span>
+              <span className="w-px h-3 bg-white/15" />
+              <span className="text-xs text-accent">{selectedPackage?.name}</span>
+              <span className="w-px h-3 bg-white/15" />
+              <span className="text-xs text-white/40">{fmt(total)}</span>
+            </motion.div>
+            <motion.button
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.6 }}
+              onClick={onClose}
+              className="w-full py-3 rounded-xl bg-accent/15 border border-accent/25 text-accent text-sm hover:bg-accent/20 transition-all duration-200"
+            >
+              Back to Package Builder
+            </motion.button>
+          </div>
+        </motion.div>
+      </motion.div>
+    );
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+    >
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-md" onClick={onClose} />
+      <motion.div
+        initial={{ scale: 0.95, opacity: 0, y: 20 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.95, opacity: 0, y: 10 }}
+        transition={{ type: "spring", damping: 28, stiffness: 300 }}
+        className="relative w-full max-w-lg bg-[#0c0f0d] border border-white/10 rounded-3xl overflow-hidden"
+      >
+        <div className="absolute top-0 right-0 w-56 h-56 bg-accent/8 rounded-full blur-[80px] pointer-events-none" />
+
+        {/* Header */}
+        <div className="relative flex items-start justify-between px-7 pt-7 pb-5 border-b border-white/6">
+          <div>
+            <p className="text-xs tracking-[0.2em] uppercase text-accent mb-1">
+              {step === 1
+                ? "Step 1 of 3 · Your Info"
+                : step === 2
+                ? "Step 2 of 3 · Event Details"
+                : "Step 3 of 3 · Review & Confirm"}
+            </p>
+            <h2 className="text-xl font-light text-white">
+              {step === 1
+                ? "Tell us about yourself"
+                : step === 2
+                ? "Where and when?"
+                : "Almost there"}
+            </h2>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-lg text-white/30 hover:text-white hover:bg-white/5 transition-all mt-0.5"
+          >
+            <X size={16} />
+          </button>
+        </div>
+
+        {/* Progress bar */}
+        <div className="h-px bg-white/5">
+          <motion.div
+            className="h-full bg-accent/60"
+            animate={{ width: `${(step / 3) * 100}%` }}
+            transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+          />
+        </div>
+
+        {/* Package summary strip */}
+        <div className="flex items-center gap-3 px-7 py-3 bg-white/[0.02] border-b border-white/6">
+          <div className="w-1.5 h-1.5 rounded-full bg-accent" />
+          <p className="text-xs text-white/40 flex-1">
+            {serviceType?.label} ·{" "}
+            <span className="text-white/60">{selectedPackage?.name}</span>
+            {selectedAddOns.length > 0 && (
+              <span className="text-white/30">
+                {" "}+ {selectedAddOns.length} add-on{selectedAddOns.length > 1 ? "s" : ""}
+              </span>
+            )}
+          </p>
+          <span className="text-sm font-light text-accent">{fmt(total)}</span>
+        </div>
+
+        {/* Form body */}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={step}
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.25, ease: "easeInOut" }}
+            className="px-7 py-6 space-y-5"
+          >
+            {step === 1 && (
+              <>
+                <div>
+                  <label className={labelCls}>Full Name</label>
+                  <div className="relative">
+                    <User size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/25 pointer-events-none" />
+                    <input
+                      type="text"
+                      placeholder="Jane Smith"
+                      value={form.name}
+                      onChange={(e) => update("name", e.target.value)}
+                      className={inputCls + " pl-9"}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className={labelCls}>Email Address</label>
+                  <div className="relative">
+                    <Mail size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/25 pointer-events-none" />
+                    <input
+                      type="email"
+                      placeholder="you@email.com"
+                      value={form.email}
+                      onChange={(e) => update("email", e.target.value)}
+                      className={inputCls + " pl-9"}
+                    />
+                  </div>
+                </div>
+              </>
+            )}
+
+            {step === 2 && (
+              <>
+                <div>
+                  <label className={labelCls}>Phone Number</label>
+                  <div className="relative">
+                    <Phone size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/25 pointer-events-none" />
+                    <input
+                      type="tel"
+                      placeholder="+1 (555) 000-0000"
+                      value={form.phone}
+                      onChange={(e) => update("phone", e.target.value)}
+                      className={inputCls + " pl-9"}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className={labelCls}>Location / City</label>
+                  <div className="relative">
+                    <MapPin size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/25 pointer-events-none" />
+                    <input
+                      type="text"
+                      placeholder="New York, NY or venue name"
+                      value={form.location}
+                      onChange={(e) => update("location", e.target.value)}
+                      className={inputCls + " pl-9"}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className={labelCls}>
+                    Preferred Date{" "}
+                    <span className="text-white/20 normal-case tracking-normal">(optional)</span>
+                  </label>
+                  <div className="relative">
+                    <CalendarDays size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/25 pointer-events-none" />
+                    <input
+                      type="date"
+                      value={form.date}
+                      onChange={(e) => update("date", e.target.value)}
+                      className={inputCls + " pl-9 [color-scheme:dark]"}
+                    />
+                  </div>
+                </div>
+              </>
+            )}
+
+            {step === 3 && (
+              <>
+                <div className="space-y-3 rounded-2xl border border-white/8 bg-white/[0.02] p-5">
+                  <p className="text-xs tracking-[0.2em] uppercase text-white/25 mb-3">Your Request Summary</p>
+                  {[
+                    { icon: User, label: "Name", value: form.name },
+                    { icon: Mail, label: "Email", value: form.email },
+                    { icon: Phone, label: "Phone", value: form.phone },
+                    { icon: MapPin, label: "Location", value: form.location },
+                    ...(form.date ? [{ icon: CalendarDays, label: "Date", value: form.date }] : []),
+                  ].map(({ icon: Icon, label, value }) => (
+                    <div key={label} className="flex items-center gap-3">
+                      <Icon size={13} className="text-white/25 flex-shrink-0" />
+                      <span className="text-xs text-white/30 w-14 flex-shrink-0">{label}</span>
+                      <span className="text-sm text-white/70 truncate">{value}</span>
+                    </div>
+                  ))}
+                </div>
+                <div>
+                  <label className={labelCls}>
+                    Anything else we should know?{" "}
+                    <span className="text-white/20 normal-case tracking-normal">(optional)</span>
+                  </label>
+                  <textarea
+                    rows={3}
+                    placeholder="Special requirements, venue details, creative vision..."
+                    value={form.notes}
+                    onChange={(e) => update("notes", e.target.value)}
+                    className={inputCls + " resize-none"}
+                  />
+                </div>
+              </>
+            )}
+          </motion.div>
+        </AnimatePresence>
+
+        {/* Footer */}
+        <div className="px-7 pb-7 flex gap-3">
+          {step > 1 && (
+            <button
+              onClick={() => setStep((s) => s - 1)}
+              className="flex items-center gap-1.5 px-4 py-3 rounded-xl border border-white/10 text-white/40 text-sm hover:text-white/70 hover:border-white/20 transition-all"
+            >
+              <ArrowLeft size={14} />
+              Back
+            </button>
+          )}
+          {step < 3 ? (
+            <motion.button
+              whileHover={canProceed() ? { scale: 1.02 } : {}}
+              whileTap={canProceed() ? { scale: 0.98 } : {}}
+              onClick={() => canProceed() && setStep((s) => s + 1)}
+              className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-medium text-sm transition-all duration-200 ${
+                canProceed()
+                  ? "bg-accent text-white hover:bg-accent/90 shadow-lg shadow-accent/20"
+                  : "bg-white/5 text-white/20 cursor-not-allowed"
+              }`}
+            >
+              Continue
+              <ArrowRight size={15} />
+            </motion.button>
+          ) : (
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => setSubmitted(true)}
+              className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-accent text-white font-medium text-sm hover:bg-accent/90 shadow-lg shadow-accent/20 transition-all duration-200"
+            >
+              Submit Request
+              <CheckCircle2 size={15} />
+            </motion.button>
+          )}
+        </div>
+      </motion.div>
+    </motion.div>
   );
 }
 
@@ -669,6 +1023,7 @@ export default function WeddingPackageBuilder() {
   const [selectedPackageId, setSelectedPackageId] = useState<string | null>(null);
   const [selectedAddOns, setSelectedAddOns] = useState<string[]>([]);
   const [mobileSummaryOpen, setMobileSummaryOpen] = useState(false);
+  const [bookingOpen, setBookingOpen] = useState(false);
 
   const serviceType = SERVICE_TYPES.find((s) => s.id === selectedServiceId) ?? null;
   const selectedPackage =
@@ -692,7 +1047,7 @@ export default function WeddingPackageBuilder() {
   }
 
   function handleBook() {
-    window.location.href = "/booking";
+    if (selectedPackage) setBookingOpen(true);
   }
 
   return (
@@ -882,14 +1237,12 @@ export default function WeddingPackageBuilder() {
                 />
               </div>
 
-              {/* Contact nudge */}
+              {/* Response time nudge */}
               <div className="mt-4 rounded-xl border border-white/8 p-4 flex items-center gap-3">
-                <Phone size={14} className="text-white/30 flex-shrink-0" />
+                <Clock size={14} className="text-white/30 flex-shrink-0" />
                 <p className="text-xs text-white/30">
-                  Need something custom?{" "}
-                  <Link to="/booking" className="text-accent hover:underline">
-                    Let's talk
-                  </Link>
+                  We typically respond within{" "}
+                  <span className="text-white/50">24 hours</span> of receiving your request.
                 </p>
               </div>
             </div>
@@ -917,6 +1270,19 @@ export default function WeddingPackageBuilder() {
             addOns={selectedAddOns}
             onClose={() => setMobileSummaryOpen(false)}
             onBook={handleBook}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Booking flow modal */}
+      <AnimatePresence>
+        {bookingOpen && (
+          <BookingModal
+            serviceType={serviceType}
+            selectedPackage={selectedPackage}
+            addOns={selectedAddOns}
+            total={total}
+            onClose={() => setBookingOpen(false)}
           />
         )}
       </AnimatePresence>

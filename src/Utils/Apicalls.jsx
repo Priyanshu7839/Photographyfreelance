@@ -766,3 +766,82 @@ export const clientLogin =
       );
     }
   };
+
+  export const getContractStatus =
+  async (clientId) => {
+    try {
+      const response =
+        await api.get(
+          `/project/contract-status/${clientId}`
+        );
+
+      return response.data;
+    } catch (error) {
+      throw new Error(
+        error.response?.data
+          ?.message ||
+          "Failed to fetch contract status"
+      );
+    }
+  };
+
+  export const signContract =
+  async (
+    clientId,
+    signName
+  ) => {
+    try {
+      const response =
+        await api.put(
+          `/project/${clientId}/sign-contract`,
+          {
+            sign_name:
+              signName,
+          }
+        );
+
+      return response.data;
+    } catch (error) {
+      throw new Error(
+        error.response?.data
+          ?.message ||
+          "Failed to sign contract"
+      );
+    }
+  };
+
+  export const getClientLicenses =
+  async (clientId) => {
+    try {
+      const response =
+        await api.get(
+          `/project/${clientId}/licenses`
+        );
+
+      return response.data;
+    } catch (error) {
+      throw new Error(
+        error.response?.data
+          ?.message ||
+          "Failed to fetch licenses"
+      );
+    }
+  };
+
+  export const downloadClientLicense =
+  async (fileId) => {
+    try {
+      const response =
+        await api.get(
+          `/project/download/${fileId}`
+        );
+
+      return response.data;
+    } catch (error) {
+      throw new Error(
+        error.response?.data
+          ?.message ||
+          "Failed to download file"
+      );
+    }
+  };

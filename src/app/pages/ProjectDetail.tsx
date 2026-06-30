@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState ,useRef} from "react";
 import { motion, AnimatePresence } from "motion/react";
 import UploadAssetsModal from '../components/UploadAssetsModal'
 import UploadProgressToast from '../components/UploadProgressToast'
@@ -48,6 +48,8 @@ import {
   MapPinHouse,
   DownloadIcon,
   Save,
+  PenLine,
+  Check,
 } from "lucide-react";
 import { Link, useParams } from "react-router";
 import { addMinutes, format } from "date-fns";
@@ -59,13 +61,16 @@ import {
   addTravelDiscussion,
   assignGears,
   deleteMoodboardSong,
+  downloadClientLicense,
   downloadFile,
   getAllGears,
   getClientAssets,
   getClientHeader,
+  getClientLicenses,
   getClientNotes,
   getClientOverview,
   getClientWorkflow,
+  getContractStatus,
   getMoodboardAssets,
   getMoodboardDiscussions,
   getMoodboardSongs,
@@ -74,6 +79,7 @@ import {
   getTeamMembers,
   getTravelData,
   getTravelDiscussions,
+  signContract,
   updateClient,
   updateClientNotes,
   updateWorkflowStatus,
@@ -846,6 +852,7 @@ const [
   const [discussionsLoading, setDiscussionsLoading] = useState(false);
 
   const [clientNotes, setClientNotes] = useState("");
+  const [newClientNotes,setNewClientNotes] = useState("")
 
   const [clientNotesLoading, setClientNotesLoading] = useState(false);
 
@@ -1152,7 +1159,7 @@ if(user.role ){
       
       setSavingNotes(true);
 
-      const response = await updateClientNotes(clientId, clientNotes);
+      const response = await updateClientNotes(clientId, newClientNotes);
 
       toast.success(response.message);
 
@@ -1526,32 +1533,6 @@ const fetchMoodboardAssets =
   };
 
 
-useEffect(() => {
-    if (activeTab === "overview" && !overviewData) {
-      fetchOverview();
-    }
-    if (activeTab === "workflow" && !workflowData) {
-      fetchWorkflow();
-    }
-    if (activeTab === "moodboard" && !moodboardAssets) {
-      fetchClientNotes();
-      fetchDiscussions();
-      fetchMoodboardSongs();
-      fetchMoodboardAssets()
-    }
-
-    if (activeTab === "gears" && (!productionSetup || !productionOverview)) {
-      fetchProductionSetup();
-      fetchProductionOverview()
-    }
-
-   
-
- if(activeTab === 'travel' && !travelData){
-    fetchTravelData()
-    fetchTravelDiscussions()
-  }
-  }, [activeTab]);
 
 
   const handleDownload =
@@ -1726,6 +1707,359 @@ useEffect(() => {
     }
   };
 
+
+
+
+
+  // ---------------------------------------Invoices------------------
+    const [invoiceItems, setInvoiceItems] = useState(() => invoiceData.items.map((item, i) => ({ ...item, id: i })));
+  const [editingInvoiceRow, setEditingInvoiceRow] = useState<number | null>(null);
+  const [invoiceRowDraft, setInvoiceRowDraft] = useState<{ description: string; quantity: number; rate: number } | null>(null);
+
+  const computedSubtotal = invoiceItems.reduce((s, i) => s + i.amount, 0);
+  const computedTax = Math.round(computedSubtotal * 0.1);
+  const computedTotal = computedSubtotal + computedTax - invoiceData.discount;
+
+  function startEditInvoiceRow(idx: number) {
+    const item = invoiceItems[idx];
+    setInvoiceRowDraft({ description: item.description, quantity: item.quantity, rate: item.rate });
+    setEditingInvoiceRow(idx);
+  }
+
+  function saveInvoiceRow(idx: number) {
+    if (!invoiceRowDraft) return;
+    setInvoiceItems(prev => prev.map((item, i) => i === idx
+      ? { ...item, description: invoiceRowDraft.description, quantity: invoiceRowDraft.quantity, rate: invoiceRowDraft.rate, amount: invoiceRowDraft.quantity * invoiceRowDraft.rate }
+      : item
+    ));
+    setEditingInvoiceRow(null);
+    setInvoiceRowDraft(null);
+  }
+
+  function cancelEditInvoiceRow() {
+    setEditingInvoiceRow(null);
+    setInvoiceRowDraft(null);
+  }
+
+
+
+
+  // Contract editing & signing
+  const [contractEditing, setContractEditing] = useState(false);
+  const [contractText, setContractText] = useState({
+    engagement: `Subject to the terms set out herein, Client engages Photographer to provide, and Photographer agrees to provide, the photography services described in this Section  in connection with the function.`,
+    deliverables: `500+ professionally edited high-resolution photographs\n5-7 minute highlight video with cinematic color grading\nDigital delivery via secure online gallery within 6 weeks\nFull-resolution download rights for personal use`,
+    delivery: `The estimated turnaround time for the final edited photographs is up to one (1) month following the event date. The editing style, including color correction, exposure adjustments, retouching, and overall artistic presentation, shall be determined by the Photographer’s professional and artistic judgment. Minor revision requests may be considered at the Photographer’s discretion, provided such revisions do not include extensive retouching beyond the agreed scope.`,
+    clarification: `As part of the Services, the Photographer will produce or take similar action to create materials from Images and provide related deliverables (as set out above) pursuant to the provision of the Services (“Work Product”). “Images” means photographic material, whether still or moving, created by Photographer pursuant to this Agreement and includes, but is not limited to, transparencies, negatives, prints or digital files, captured, recorded, stored or delivered in any type of analogue, photographic, optical, electronic, magnetic, digital or any other medium.
+
+  Client acknowledges and agrees that Photographer will be the exclusive provider of the Services in coverage of the Half Saree & Dhoti Ceremony, unless otherwise agreed to by the parties in writing.`,
+    fees: `Client will pay Photographer the fees set out herein in this (“Fees”), including any applicable federal or state/provincial sales or value-added taxes due on such Fees.
+
+
+
+Client acknowledges and agrees that the deposit amount set out above is due upon the signing of this Agreement and is not refundable (“Deposit”), so as to fairly compensate Photographer for committing his/her time to provide the Services and turning down other potential projects or clients. Both parties agree that the Deposit will be credited towards the total Fees payable by Client.
+
+ Photographer will issue an invoice to Client upon agreement of the Services (“Invoice”). Client agrees to pay all Fees outstanding on or prior to the due dates set out in Section 2.1. Any payment after the due date will incur a late fee of 5% per month on the outstanding balance. Client acknowledges that the final amount payable may be subject to change depending on the amount actual expenses incurred. Client confirms and agrees that the final calculations provided in the Invoice, should they be different from the total listed in Section 2.1, will be the final amount payable.`,
+    responsibilities: `Required Consents. Client will ensure that all required consents, as applicable, have been obtained prior to performance of the Services, including any consents required for the performance of Services and the delivery of Work Product by Photographer and, as applicable, from venues or locales where the Services are to be performed or from attendees.
+
+Client will provide the means of travel or be responsible for reasonable travel expenses incurred by Photographer that are necessary for the performance of the Services or travel that is otherwise requested by Client where the location of the performance of the Services is not in the city of Kansas City. Client will be responsible for any other expenses incurred by Photographer that are necessary for the performance of the Services as more particularly set out in Article 2.
+
+When the number of hours that Photographer will be providing the Services is expected to be in excess of 5 hours in duration, Client will provide a meal for Photographer and Photography Staff (employees, assistants or other parties engaged by Photographer to assist with the Services), or be responsible for reasonable meal expenses incurred for which Photographer shall provide an invoice.
+
+Client (on behalf of himself/herself and any other participant whose image or recording may be captured by the Services) hereby waives all rights and claims, and releases Photographer from any claim or cause of action, whether now known or unknown, relating to the sale, display, license, use and exploitation of Images pursuant to this Agreement`,
+    PhotographerResponsibilities: `Equipment - Client will not be required to supply any photography equipment to Photographer.
+
+Manner of Service - Photographer will ensure that the Services are performed in a good, expedient, workmanlike and safe manner, and in such a manner as to avoid unreasonable interference with Client’s activities.
+
+Photography Staff - Photographer will, and will ensure that all Photography Staff (employees, assistants or other parties engaged by Photographer to assist with the Services): 
+
+    comply with the reasonable directions of Client from time to time regarding the safety of attendees at the Half Saree & Dhoti Ceremony and applicable health, safety and security requirements of any locations where the Services are provided.
+
+    ensure that Work Product meets the specifications set out in Section 1 in all material respects.
+
+    Photographer will be responsible in every respect for the actions of all Photography Staff.
+
+Photographer will take reasonable precautions to safeguard and back up all images. However, in rare cases of technical failure or data loss beyond Photographer’s control, Photographer’s responsibility will be limited to refunding any fees paid by the Client.`,
+
+ArtisticRelease :`
+Consistency - Photographer will use reasonable efforts to ensure that the Services are produced in a style consistent with Photographer’s current portfolio, and Photographer will use reasonable efforts to consult with Client and incorporate any reasonable suggestions.
+
+Style - Client acknowledges and agrees that:
+
+    Client has reviewed Photographer’s previous work and portfolio and has a reasonable expectation that Photographer will perform the Services in a similar style
+
+    Photographers will use its artistic judgement when providing the Services, and shall have final say regarding the aesthetic judgement and artistic quality of the Services; and
+
+    Disagreement with Photographer’s aesthetic judgement or artistic ability are not valid reasons for termination of this Agreement or request of any monies returned.`,
+    terms:`
+    Term - This Agreement will begin on the Effective Date and continue until the latter of (i) the date where all outstanding Fees under this Agreement are paid in full; or (ii) the date where all final Work Product has been delivered (“Term”).
+
+Cancellation - Client may terminate the Agreement (“Cancellation”) and/or reschedule the Services (“Rescheduling”) by providing Photographer with written notice no later than 30 days before the original date of the Half Saree & Dhoti Ceremony (the “Minimum Notice”). Client acknowledges and agrees that Client is not relieved of any payment obligations for Cancellations and Rescheduling unless the Minimum Notice in accordance with this Article 6 is duly provided or unless the parties otherwise agree in writing.  
+
+Rescheduling - In the event of Rescheduling, Photographer will use commercially reasonable efforts to accommodate Client’s change. If Photographer is not able to accommodate Client’s change despite using commercially reasonable efforts, the parties agree that such Rescheduling will be deemed as Cancellation by Client and that Photographer will be under no obligation to perform the Services other than on the original date of the Half Saree & Dhoti Ceremony. In the event of rescheduling with sufficient notice, the deposit will be applied toward the rescheduled date.
+
+No Refund - Client acknowledges and agrees that Cancellation by Client will not result in a refund of any fees paid on or prior to the date of Cancellation by Client.
+
+Replacement - In the event that Photographer is unable to perform the Services, Photographer, subject to Client’s consent, which is not to be reasonably withheld, shall cause a replacement photographer to perform the Services in accordance with the terms of this Agreement. In the event that such consent is not obtained, Photographer shall terminate this Agreement and shall return the Deposit and all fees paid by Client, and thereafter shall have no further liability to Client.
+    `,
+    ownership:`
+    Photographer retains copyright ownership of all images and creative work produced, while fully respecting the Client’s privacy preferences regarding public sharing or display.
+    `,
+    clientLicense:`
+    Personal Use -  Photographer hereby grants Client an exclusive, limited, irrevocable, royalty-free, non-transferable and non-sublicensable license to use Work Product for Client’s Personal Use, provided that Client does not remove any attribution notices or copyright notices included by Photographer in any Work Product. “Personal Use” includes, but is not limited to, use (i) of photos on Client’s personal social media pages or profiles; (ii) in Client’s personal creations, such as scrapbooks, albums or personal gifts; (iii) in non-commercial physical display; and (iv) in personal communications, such as family newsletter, email, or holiday card. Client will not make any other use of the Work Product without Photographer’s prior written consent, including but not limited to use of the Work Product for commercial sale.
+
+Photographer does not provide RAW files, unedited images, or original digital negatives. These files remain the exclusive property of the Photographer and are not available for purchase or distribution. Delivery of RAW files is not included under any circumstances. The Client agrees that the Photographer’s editing and post-production process is an integral part of the Services and final Work Product.
+    `,
+    Indemnity: `
+    Indemnification - Client agrees to indemnify, defend and hold harmless Photographer and its affiliates, employees, agents and independent contractors for any injury, property damage, liability, claim or other cause of action arising out of or related to the Services and or Work Product Photographer provides to Client.
+
+Force Majeure - Neither party shall be held in breach of or liable under this Agreement for any delay or non-performance of any provision of this Agreement caused by illness, emergency, fire, strike, pandemic, earthquake, or any other conditions beyond the reasonable control of the non-performing party (each a “Force Majeure Event”), and the time of performance of such provision, if any, shall be deemed to be extended for a period equal to the duration of the conditions preventing performance. If such Force Majeure Event persists for more than 60 days, the party not affected by the Force Majeure Event may terminate the Agreement and any prepaid fees for Services not performed (other than the Deposit) shall be returned within 15 days of the date of termination of the Agreement.
+
+Failure to Deliver -  Photographer shall not be held liable for delays in the delivery of such Work Product, or any Work Product undeliverable, due to technological malfunctions, service interruptions that are beyond the control of Photographer (including as a result of delays in receipt of instructions from Client) and for Work Product that fails to meet the specifications set out in Section 1.1 due to the actions of Client or attendees at the Half Saree & Dhoti Ceremony that are beyond the control of Photographer (e.g., camera flashes).
+
+Maximum Liability - Notwithstanding anything to the contrary, Client agrees that Photographer’s maximum liability arising out of or related to the Services or the Work Product shall not exceed the total Fees payable under this Agreement.
+    `,
+    General:`
+    
+    Notice - Parties shall provide effective notice (“Notice”) to each other via either of the following methods of delivery at the date and time which the Notice is sent:
+
+    Photographer’s Email: reachus@midorimediacompany.com
+
+    Client’s Email: ----------------------
+
+Survival - Articles 7, 8, 9 and 10 will survive termination of this Agreement.
+
+Governing Law - This Agreement will be governed by the laws of Missouri
+
+Amendment - This Agreement may only be amended, supplemented or otherwise modified by written agreement signed by each of the parties.
+
+Entire Agreement - This Agreement constitutes the entire agreement between the parties with respect to the Services and supersedes all prior agreements and understandings both formal and informal.
+
+Severability -  If any provision of this Agreement is determined to be illegal, invalid or unenforceable, in whole or in part, by an arbitrator or any court of competent jurisdiction, that provision or part thereof will be severed from this Agreement and the remaining part of such provision and all other provisions will continue in full force and effect.`
+  });
+  const [clientSignedName, setClientSignedName] = useState("");
+  const [clientSigned, setClientSigned] = useState(false);
+  const [clientSignedDate, setClientSignedDate] = useState<string | null>(null);
+  const [signMode, setSignMode] = useState<"type" | "draw">("type");
+  const signatureCanvasRef = useRef<HTMLCanvasElement>(null);
+  const isDrawingRef = useRef(false);
+  const [hasDrawnSignature, setHasDrawnSignature] = useState(false);
+
+  function handleCanvasMouseDown(e: React.MouseEvent<HTMLCanvasElement>) {
+    const canvas = signatureCanvasRef.current;
+    if (!canvas) return;
+    isDrawingRef.current = true;
+    const rect = canvas.getBoundingClientRect();
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.beginPath();
+    ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
+  }
+
+  function handleCanvasMouseMove(e: React.MouseEvent<HTMLCanvasElement>) {
+    if (!isDrawingRef.current) return;
+    const canvas = signatureCanvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = 2;
+    ctx.lineCap = "round";
+    ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
+    ctx.stroke();
+    setHasDrawnSignature(true);
+  }
+
+  function handleCanvasMouseUp() {
+    isDrawingRef.current = false;
+  }
+
+  function clearCanvas() {
+    const canvas = signatureCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    setHasDrawnSignature(false);
+  }
+
+
+
+  // License & Insurance uploaded docs
+  const [uploadedDocs, setUploadedDocs] = useState<Array<{
+    id: number;
+    name: string;
+    size: string;
+    category: "license" | "insurance" | "certification";
+    uploadedAt: string;
+  }>>([]);
+  const licenseInputRef = useRef<HTMLInputElement>(null);
+  const insuranceInputRef = useRef<HTMLInputElement>(null);
+  const certInputRef = useRef<HTMLInputElement>(null);
+
+  function handleDocUpload(e: React.ChangeEvent<HTMLInputElement>, category: "license" | "insurance" | "certification") {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+   handleUploadFiles(
+  files.map(file => ({ file })),
+  clientId,
+  "license",
+  false
+);
+  }
+
+  function removeDoc(id: number) {
+    setUploadedDocs(prev => prev.filter(d => d.id !== id));
+  }
+  
+
+
+  const [
+  contractStatus,
+  setContractStatus,
+] = useState(null);
+
+const [
+  contractLoading,
+  setContractLoading,
+] = useState(false);
+
+
+const fetchContractStatus =
+  async () => {
+    try {
+      setContractLoading(
+        true
+      );
+
+      const response =
+        await getContractStatus(
+          clientId
+        );
+
+        setClientSigned (response.data?.contract_signed)
+        setClientSignedDate(response?.data?.contract_signed_at)
+        setClientSignedName(response?.data?.sign_name)
+        console.log(response?.data)
+      setContractStatus(
+        response.data
+      );
+    } catch (error) {
+      toast.error(
+        error.message
+      );
+    } finally {
+      setContractLoading(
+        false
+      );
+    }
+  };
+
+  const [signingContract,setSigningContract] = useState(false)
+
+const handleSignContract =
+  async () => {
+
+    setSigningContract(true)
+    try {
+      await signContract(
+        clientId,
+        clientSignedName
+      );
+
+      toast.success(
+        "Contract signed successfully"
+      );
+
+      fetchContractStatus();
+    } catch (error) {
+      toast.error(
+        error.message
+      );
+    }finally{
+      setSigningContract(false)
+    }
+  };
+
+
+
+  const [
+  licenses,
+  setLicenses,
+] = useState([]);
+
+const [
+  licensesLoading,
+  setLicensesLoading,
+] = useState(false);
+
+const fetchLicenses =
+  async () => {
+    try {
+      setLicensesLoading(
+        true
+      );
+
+      const response =
+        await getClientLicenses(
+          clientId
+        );
+
+      setLicenses(
+        response.data
+      );
+
+      console.log(response.data)
+    } catch (error) {
+      toast.error(
+        error.message
+      );
+    } finally {
+      setLicensesLoading(
+        false
+      );
+    }
+  };
+
+useEffect(() => {
+    if (activeTab === "overview" && !overviewData) {
+      fetchOverview();
+    }
+    if (activeTab === "workflow" && !workflowData) {
+      fetchWorkflow();
+    }
+    if (activeTab === "moodboard" && !moodboardAssets) {
+      fetchClientNotes();
+      fetchDiscussions();
+      fetchMoodboardSongs();
+      fetchMoodboardAssets()
+    }
+
+    if (activeTab === "gears" && (!productionSetup || !productionOverview)) {
+      fetchProductionSetup();
+      fetchProductionOverview()
+    }
+
+   
+
+ if(activeTab === 'travel' && !travelData){
+    fetchTravelData()
+    fetchTravelDiscussions()
+  }
+
+  if(activeTab === 'contract' && !contractStatus){
+    fetchContractStatus()
+  }
+
+  if(activeTab === 'license' && licenses.length === 0) {
+    fetchLicenses()
+  }
+
+  }, [activeTab]);
+
+
+ 
   
 
 
@@ -2177,6 +2511,8 @@ useEffect(() => {
                             </button>
                           ))}
                         </div>
+
+                      
                     {user.role &&    <button 
                          onClick={() => {
                           setShowUploadModal(true)
@@ -2208,6 +2544,11 @@ useEffect(() => {
                       </div> */}
                     </div>
 
+                          {currentAssets?.length > 0 && <p className="mb-5 text-sm text-white/70"> These Images are very highly defined, Please have patience while they load up.</p>}
+
+
+                      
+
                     {/* Asset Grid */}
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                       {assetsloading && currentAssets?.length === 0 ? (
@@ -2227,6 +2568,7 @@ useEffect(() => {
                           onClick={() => setSelectedAsset(asset)}
                           className="group relative aspect-square bg-white/[0.055] border border-white/10 rounded-xl overflow-hidden cursor-pointer hover:border-accent/50 hover:shadow-[0_16px_40px_rgba(0,0,0,0.28)] transition-all"
                         >
+
 
                      
                           <img
@@ -2805,12 +3147,16 @@ useEffect(() => {
                   {clientNotesLoading ? (
                     <ProjectDetailCardShimmer className="min-h-[120px] w-full" />
                   ) : (
-                    <textarea
-                      value={clientNotes}
-                      onChange={(e) => setClientNotes(e.target.value)}
+                    <div className="flex flex-col gap-4">
+                     {clientNotes && <h1 className='text-[16px] flex items-start gap-2'> {clientNotes}</h1>}
+                      <textarea
+                     
+                      value={newClientNotes}
+                      onChange={(e) => setNewClientNotes(e.target.value)}
                       className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-base focus:outline-none focus:border-accent/50 transition-colors min-h-[120px] resize-y"
                       placeholder="Add notes about the project vision, style preferences, must-have shots..."
                     />
+                    </div>
                   )}
 
                   <div className="w-full flex items-center justify-end">
@@ -2822,6 +3168,9 @@ useEffect(() => {
                       {savingNotes ? "Saving..." : "Save"}
                     </button>
                   </div>
+
+
+                  <p className="text-sm mt-4 text-red-600">Client notes cannot be edited for maintained partiality</p>
                 </div>
 
                 {/* Song Selection */}
@@ -3607,7 +3956,7 @@ crew.member_name?.split(" ").slice(-1)[0]?.[0] || ""
             )}
 
             {/* Invoices Tab */}
-            {activeTab === "invoices" && (
+           {activeTab === "invoices" && (
               <motion.div
                 key="invoices"
                 initial={{ opacity: 0, y: 20 }}
@@ -3615,71 +3964,50 @@ crew.member_name?.split(" ").slice(-1)[0]?.[0] || ""
                 exit={{ opacity: 0, y: -20 }}
                 transition={{ duration: 0.3 }}
               >
-                <div className="bg-white/[0.055] border border-white/10 rounded-2xl p-8 md:p-12 max-w-4xl mx-auto shadow-[0_24px_80px_rgba(0,0,0,0.22)]">
+                <div className="bg-white/5 border border-white/10 rounded-2xl p-8 md:p-12 max-w-4xl mx-auto">
                   {/* Invoice Header */}
                   <div className="border-b border-white/10 pb-8 mb-8">
                     <div className="flex justify-between items-start mb-6">
                       <div>
-                        <h2 className="text-3xl mb-2">
-                          {invoiceData.businessName}
-                        </h2>
-                        <p className="text-sm opacity-60">
-                          Professional Photography Services
-                        </p>
+                        <h2 className="text-3xl mb-2">{invoiceData.businessName}</h2>
+                        <p className="text-sm opacity-60">Professional Photography Services</p>
                       </div>
                       <div className="text-right">
                         <p className="text-sm opacity-60 mb-1">INVOICE</p>
-                        <p className="text-xl">{invoiceData.invoiceNumber}</p>
+                        {/* <p className="text-xl">{invoiceData.invoiceNumber}</p> */}
                       </div>
                     </div>
 
                     <div className="grid md:grid-cols-3 gap-6">
                       <div>
                         <p className="text-xs opacity-60 mb-1">Issue Date</p>
-                        <p>
-                          {format(
-                            new Date(invoiceData.issueDate),
-                            "MMM dd, yyyy",
-                          )}
-                        </p>
+                        <p>{format(new Date(invoiceData.issueDate), "MMM dd, yyyy")}</p>
                       </div>
                       <div>
                         <p className="text-xs opacity-60 mb-1">Due Date</p>
-                        <p>
-                          {format(
-                            new Date(invoiceData.dueDate),
-                            "MMM dd, yyyy",
-                          )}
-                        </p>
+                        <p>{format(new Date(invoiceData.dueDate), "MMM dd, yyyy")}</p>
                       </div>
-                      <div>
-                        <p className="text-xs opacity-60 mb-1">
-                          Payment Status
-                        </p>
-                        <span
-                          className={`inline-block px-3 py-1 rounded-full text-xs ${
-                            invoiceData.paymentStatus === "Paid"
-                              ? "bg-accent/20 text-accent"
-                              : invoiceData.paymentStatus === "Partially Paid"
-                                ? "bg-[#2d5f4f]/20 text-emerald-200"
-                                : "bg-amber-500/10 text-amber-200"
-                          }`}
-                        >
+                      {/* <div>
+                        <p className="text-xs opacity-60 mb-1">Payment Status</p>
+                        <span className={`inline-block px-3 py-1 rounded-full text-xs ${
+                          invoiceData.paymentStatus === "Paid"
+                            ? "bg-accent/20 text-accent"
+                            : invoiceData.paymentStatus === "Partially Paid"
+                            ? "bg-blue-500/20 text-blue-300"
+                            : "bg-orange-500/20 text-orange-300"
+                        }`}>
                           {invoiceData.paymentStatus}
                         </span>
-                      </div>
+                      </div> */}
                     </div>
                   </div>
 
                   {/* Client Details */}
                   <div className="mb-8">
                     <p className="text-xs opacity-60 mb-2">BILLED TO</p>
-                    <p className="text-lg mb-1">{mockProject.clientName}</p>
-                    <p className="text-sm opacity-70">
-                      {mockProject.eventType} •{" "}
-                      {format(new Date(mockProject.eventDate), "MMM dd, yyyy")}
-                    </p>
-                    <p className="text-sm opacity-70">{mockProject.location}</p>
+                    <p className="text-lg mb-1">{clientData?.client_name}</p>
+                    <p className="text-sm opacity-70 capitalize">{clientData?.event_name} • {format(new Date(clientData?.event_date), "MMM dd, yyyy")}</p>
+                    <p className="text-sm opacity-70">{clientData?.event_location}</p>
                   </div>
 
                   {/* Itemized Billing */}
@@ -3687,33 +4015,93 @@ crew.member_name?.split(" ").slice(-1)[0]?.[0] || ""
                     <table className="w-full">
                       <thead>
                         <tr className="border-b border-white/10">
-                          <th className="text-left py-3 text-xs opacity-60">
-                            DESCRIPTION
-                          </th>
-                          <th className="text-right py-3 text-xs opacity-60">
-                            QTY
-                          </th>
-                          <th className="text-right py-3 text-xs opacity-60">
-                            RATE
-                          </th>
-                          <th className="text-right py-3 text-xs opacity-60">
-                            AMOUNT
-                          </th>
+                          <th className="text-left py-3 text-xs opacity-60">DESCRIPTION</th>
+                          <th className="text-right py-3 text-xs opacity-60">QTY</th>
+                          <th className="text-right py-3 text-xs opacity-60">RATE</th>
+                          <th className="text-right py-3 text-xs opacity-60">AMOUNT</th>
+                          {
+                          // userRole === "editor" && 
+                          <th className="py-3 w-16" />}
                         </tr>
                       </thead>
                       <tbody>
-                        {invoiceData.items.map((item, index) => (
-                          <tr key={index} className="border-b border-white/5">
-                            <td className="py-4">{item.description}</td>
-                            <td className="py-4 text-right opacity-70">
-                              {item.quantity}
-                            </td>
-                            <td className="py-4 text-right opacity-70">
-                              ${item.rate.toLocaleString()}
-                            </td>
-                            <td className="py-4 text-right">
-                              ${item.amount.toLocaleString()}
-                            </td>
+                        {invoiceItems.map((item, index) => (
+                          <tr
+                            key={item.id}
+                            className={`border-b border-white/5 transition-colors ${editingInvoiceRow === index ? "bg-white/5" : "hover:bg-white/[0.03]"}`}
+                          >
+                            {editingInvoiceRow === index && invoiceRowDraft ? (
+                              <>
+                                <td className="py-3 pr-3">
+                                  <input
+                                    type="text"
+                                    value={invoiceRowDraft.description}
+                                    onChange={e => setInvoiceRowDraft(d => d ? { ...d, description: e.target.value } : d)}
+                                    className="w-full bg-white/5 border border-accent/30 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-accent/60 transition-colors"
+                                  />
+                                </td>
+                                <td className="py-3 px-2">
+                                  <input
+                                    type="number"
+                                    min={1}
+                                    value={invoiceRowDraft.quantity}
+                                    onChange={e => setInvoiceRowDraft(d => d ? { ...d, quantity: Number(e.target.value) } : d)}
+                                    className="w-16 bg-white/5 border border-accent/30 rounded-lg px-2 py-1.5 text-sm text-right focus:outline-none focus:border-accent/60 transition-colors"
+                                  />
+                                </td>
+                                <td className="py-3 px-2">
+                                  <div className="flex items-center justify-end gap-1">
+                                    <span className="text-sm opacity-50">$</span>
+                                    <input
+                                      type="number"
+                                      min={0}
+                                      value={invoiceRowDraft.rate}
+                                      onChange={e => setInvoiceRowDraft(d => d ? { ...d, rate: Number(e.target.value) } : d)}
+                                      className="w-24 bg-white/5 border border-accent/30 rounded-lg px-2 py-1.5 text-sm text-right focus:outline-none focus:border-accent/60 transition-colors"
+                                    />
+                                  </div>
+                                </td>
+                                <td className="py-3 text-right text-accent">
+                                  ${(invoiceRowDraft.quantity * invoiceRowDraft.rate).toLocaleString()}
+                                </td>
+                                <td className="py-3 pl-3">
+                                  <div className="flex gap-1 justify-end">
+                                    <button
+                                      onClick={() => saveInvoiceRow(index)}
+                                      className="w-7 h-7 rounded-lg bg-accent/20 hover:bg-accent/30 border border-accent/30 flex items-center justify-center transition-colors"
+                                    >
+                                      <Check className="w-3.5 h-3.5 text-accent" />
+                                    </button>
+                                    <button
+                                      onClick={cancelEditInvoiceRow}
+                                      className="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center transition-colors"
+                                    >
+                                      <X className="w-3.5 h-3.5 opacity-60" />
+                                    </button>
+                                  </div>
+                                </td>
+                              </>
+                            ) : (
+                              <>
+                                <td className="py-4 text-sm">{item.description}</td>
+                                <td className="py-4 text-right opacity-70 text-sm">{item.quantity}</td>
+                                <td className="py-4 text-right opacity-70 text-sm">${item.rate.toLocaleString()}</td>
+                                <td className="py-4 text-right text-sm">${item.amount.toLocaleString()}</td>
+                                {
+                                // userRole === "editor" &&
+                                 (
+                                  <td className="py-4 pl-3">
+                                    <button
+                                      onClick={() => startEditInvoiceRow(index)}
+                                      className="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 hover:border-accent/30 flex items-center justify-center transition-all group"
+                                      title="Edit row"
+                                    >
+                                      <PenLine className="w-3.5 h-3.5 opacity-40 group-hover:opacity-100 group-hover:text-accent transition-all" />
+                                    </button>
+                                  </td>
+                                )}
+                              </>
+                            )}
                           </tr>
                         ))}
                       </tbody>
@@ -3725,11 +4113,11 @@ crew.member_name?.split(" ").slice(-1)[0]?.[0] || ""
                     <div className="w-full md:w-80 space-y-3">
                       <div className="flex justify-between text-sm">
                         <span className="opacity-60">Subtotal</span>
-                        <span>${invoiceData.subtotal.toLocaleString()}</span>
+                        <span>${computedSubtotal.toLocaleString()}</span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span className="opacity-60">Tax (10%)</span>
-                        <span>${invoiceData.tax.toLocaleString()}</span>
+                        <span>${computedTax.toLocaleString()}</span>
                       </div>
                       {invoiceData.discount > 0 && (
                         <div className="flex justify-between text-sm text-accent">
@@ -3739,26 +4127,17 @@ crew.member_name?.split(" ").slice(-1)[0]?.[0] || ""
                       )}
                       <div className="border-t border-white/10 pt-3 flex justify-between text-xl">
                         <span>Total</span>
-                        <span className="text-accent">
-                          ${invoiceData.total.toLocaleString()}
-                        </span>
+                        <span className="text-accent">${computedTotal.toLocaleString()}</span>
                       </div>
                       {invoiceData.paymentStatus === "Partially Paid" && (
                         <>
                           <div className="flex justify-between text-sm opacity-70">
                             <span>Amount Paid</span>
-                            <span>
-                              ${invoiceData.amountPaid.toLocaleString()}
-                            </span>
+                            <span>${invoiceData.amountPaid.toLocaleString()}</span>
                           </div>
                           <div className="flex justify-between text-lg border-t border-white/10 pt-3">
                             <span>Balance Due</span>
-                            <span className="text-amber-200">
-                              $
-                              {(
-                                invoiceData.total - invoiceData.amountPaid
-                              ).toLocaleString()}
-                            </span>
+                            <span className="text-orange-300">${(computedTotal - invoiceData.amountPaid).toLocaleString()}</span>
                           </div>
                         </>
                       )}
@@ -3773,31 +4152,22 @@ crew.member_name?.split(" ").slice(-1)[0]?.[0] || ""
                     </div>
                     <div>
                       <p className="text-xs opacity-60 mb-2">NOTES</p>
-                      <p className="text-sm opacity-80 italic">
-                        {invoiceData.notes}
-                      </p>
+                      <p className="text-sm opacity-80 italic">{invoiceData.notes}</p>
                     </div>
                   </div>
 
                   {/* Actions */}
-                  {userRole === "editor" && (
-                    <div className="mt-8 flex gap-3">
-                      <button className="flex items-center gap-2 px-4 py-2.5 border border-white/10 rounded-full text-sm hover:bg-white/5 transition-all">
-                        <Edit className="w-4 h-4" />
-                        <span>Edit Invoice</span>
-                      </button>
-                      <button className="flex items-center gap-2 px-4 py-2.5 border border-white/10 rounded-full text-sm hover:bg-white/5 transition-all">
-                        <Download className="w-4 h-4" />
-                        <span>Download PDF</span>
-                      </button>
-                    </div>
-                  )}
+                  <div className="mt-8 flex gap-3">
+                    <button className="flex items-center gap-2 px-4 py-2.5 border border-white/10 rounded-full text-sm hover:bg-white/5 transition-all">
+                      <Download className="w-4 h-4" />
+                      <span>Download PDF</span>
+                    </button>
+                  </div>
                 </div>
               </motion.div>
             )}
-
             {/* Contract Tab */}
-            {activeTab === "contract" && (
+          {activeTab === "contract" && (
               <motion.div
                 key="contract"
                 initial={{ opacity: 0, y: 20 }}
@@ -3805,15 +4175,37 @@ crew.member_name?.split(" ").slice(-1)[0]?.[0] || ""
                 exit={{ opacity: 0, y: -20 }}
                 transition={{ duration: 0.3 }}
               >
-                <div className="bg-white/[0.055] border border-white/10 rounded-2xl p-8 md:p-12 max-w-4xl mx-auto shadow-[0_24px_80px_rgba(0,0,0,0.22)]">
-                  {/* Contract Title */}
-                  <div className="text-center mb-12 border-b border-white/10 pb-8">
-                    <h2 className="text-3xl md:text-4xl mb-4">
-                      Photography Service Agreement
-                    </h2>
-                    <p className="text-sm opacity-60">
-                      Legal Contract between Photographer and Client
-                    </p>
+                <div className="bg-white/5 border border-white/10 rounded-2xl p-8 md:p-12 max-w-4xl mx-auto">
+                  {/* Contract Title + Edit Toggle */}
+                  <div className="text-center mb-12 border-b border-white/10 pb-8 relative">
+                    <h2 className="text-3xl md:text-4xl mb-4">Photography Service Agreement</h2>
+                    <p className="text-sm opacity-60">Legal Contract</p>
+                    {userRole === "editor" && (
+                      <button
+                        onClick={() => setContractEditing(prev => !prev)}
+                        className={`absolute top-0 right-0 flex items-center gap-2 px-4 py-2 rounded-full text-sm transition-all ${
+                          contractEditing
+                            ? "bg-accent text-background shadow-lg shadow-accent/20"
+                            : "border border-white/10 hover:bg-white/5"
+                        }`}
+                      >
+                        {contractEditing ? (
+                          <><Check className="w-4 h-4" /><span>Done Editing</span></>
+                        ) : (
+                          <><Edit className="w-4 h-4" /><span>Edit Contract</span></>
+                        )}
+                      </button>
+                    )}
+                    {contractEditing && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="mt-4 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-accent/10 border border-accent/20 text-xs text-accent"
+                      >
+                        <PenLine className="w-3 h-3" />
+                        Document is now editable — click any section to modify
+                      </motion.div>
+                    )}
                   </div>
 
                   {/* Parties */}
@@ -3821,195 +4213,143 @@ crew.member_name?.split(" ").slice(-1)[0]?.[0] || ""
                     <div className="p-4 bg-white/5 rounded-xl">
                       <p className="text-xs opacity-60 mb-2">PHOTOGRAPHER</p>
                       <p className="text-lg">{invoiceData.businessName}</p>
-                      <p className="text-sm opacity-70 mt-1">
-                        Professional Photography Services
-                      </p>
+                      <p className="text-sm opacity-70 mt-1">Professional Photography Services</p>
                     </div>
                     <div className="p-4 bg-white/5 rounded-xl">
                       <p className="text-xs opacity-60 mb-2">CLIENT</p>
-                      <p className="text-lg">{mockProject.clientName}</p>
-                      <p className="text-sm opacity-70 mt-1">
-                        {mockProject.eventType} •{" "}
-                        {format(
-                          new Date(mockProject.eventDate),
-                          "MMM dd, yyyy",
-                        )}
-                      </p>
+                      <p className="text-lg">{clientData?.client_name}</p>
+                      <p className="text-sm opacity-70 mt-1">{clientData?.event_name} • {format(new Date(clientData?.event_date), "MMM dd, yyyy")}</p>
                     </div>
                   </div>
 
                   {/* Contract Sections */}
                   <div className="space-y-8 text-sm leading-relaxed">
-                    <section>
-                      <h3 className="text-lg mb-3 flex items-center gap-2">
-                        <FileText className="w-5 h-5 text-accent" />
-                        1. Scope of Work
-                      </h3>
-                      <p className="opacity-80">
-                        The Photographer agrees to provide professional
-                        photography and videography services for the Client's{" "}
-                        {mockProject.eventType.toLowerCase()}
-                        on{" "}
-                        {format(
-                          new Date(mockProject.eventDate),
-                          "MMMM dd, yyyy",
-                        )}{" "}
-                        at {mockProject.location}. Services include event
-                        coverage, pre-event shoot, post-production editing,
-                        color grading, and final delivery of digital assets.
-                      </p>
-                    </section>
-
-                    <section>
-                      <h3 className="text-lg mb-3">2. Deliverables</h3>
-                      <ul className="list-disc list-inside space-y-2 opacity-80">
-                        <li>
-                          500+ professionally edited high-resolution photographs
-                        </li>
-                        <li>
-                          5-7 minute highlight video with cinematic color
-                          grading
-                        </li>
-                        <li>
-                          Digital delivery via secure online gallery within 6
-                          weeks
-                        </li>
-                        <li>
-                          Full-resolution download rights for personal use
-                        </li>
-                      </ul>
-                    </section>
-
-                    <section>
-                      <h3 className="text-lg mb-3 flex items-center gap-2">
-                        <DollarSign className="w-5 h-5 text-accent" />
-                        3. Payment Terms
-                      </h3>
-                      <p className="opacity-80 mb-3">
-                        Total project cost:{" "}
-                        <span className="text-accent">
-                          ${invoiceData.total.toLocaleString()}
-                        </span>
-                      </p>
-                      <ul className="list-disc list-inside space-y-2 opacity-80">
-                        <li>
-                          50% deposit (${invoiceData.total * 0.5}) due upon
-                          contract signing to secure the date
-                        </li>
-                        <li>Remaining 50% due on or before the event date</li>
-                        <li>
-                          Late payments subject to 5% monthly interest charge
-                        </li>
-                      </ul>
-                    </section>
-
-                    <section>
-                      <h3 className="text-lg mb-3">
-                        4. Cancellation & Refund Policy
-                      </h3>
-                      <p className="opacity-80">
-                        Cancellations made more than 60 days prior to the event:
-                        75% refund of deposit. Cancellations made 30-60 days
-                        prior: 50% refund. Cancellations less than 30 days
-                        prior: No refund. Photographer may cancel due to
-                        illness, emergency, or force majeure with full refund of
-                        all payments received.
-                      </p>
-                    </section>
-
-                    <section>
-                      <h3 className="text-lg mb-3">
-                        5. Usage Rights & Copyright
-                      </h3>
-                      <p className="opacity-80 mb-3">
-                        The Photographer retains full copyright of all images
-                        and videos. The Client receives unlimited personal usage
-                        rights for the delivered content. Commercial use
-                        requires separate written authorization. The
-                        Photographer reserves the right to use images for
-                        portfolio, marketing, and promotional purposes unless
-                        explicitly restricted by Client in writing.
-                      </p>
-                    </section>
-
-                    <section>
-                      <h3 className="text-lg mb-3">6. Liability Clause</h3>
-                      <p className="opacity-80">
-                        The Photographer's liability is limited to a refund of
-                        payments made. The Photographer is not liable for missed
-                        shots due to obstructions, lighting conditions, or other
-                        circumstances beyond reasonable control. The
-                        Photographer maintains backup equipment but is not
-                        liable for technical failures beyond their control.
-                      </p>
-                    </section>
-
-                    <section>
-                      <h3 className="text-lg mb-3">7. Force Majeure</h3>
-                      <p className="opacity-80">
-                        Neither party shall be liable for failure to perform due
-                        to causes beyond reasonable control including natural
-                        disasters, acts of terrorism, pandemic, government
-                        restrictions, or other unforeseeable circumstances. In
-                        such cases, the contract may be rescheduled or
-                        terminated with full refund.
-                      </p>
-                    </section>
+                    {([
+                      { key: "engagement" as const, num: 1, title: "Engagement of Photographer", icon: FileText },
+                      { key: "delivery" as const, num: 2, title: "Delivery & Post-Production Terms (Photography)", icon: null },
+                      { key: "clarification" as const, num: 3, title: "Important Clarifications:", icon: DollarSign },
+                      { key: "fees" as const, num: 4, title: "Fees And Deposit", icon: null },
+                      { key: "responsibilities" as const, num: 5, title: " Client Responsibilities", icon: null },
+                      { key: "PhotographerResponsibilities" as const, num: 6, title: "Photographer Responsibilities", icon: null },
+                      { key: "ArtisticRelease" as const, num: 7, title: "Artistic Release", icon: null },
+                      { key: "terms" as const, num: 7, title: "Term and Termination", icon: null },
+                      { key: "ownership" as const, num: 7, title: "Ownership of Work Product by Photographer", icon: null },
+                      { key: "Indemnity" as const, num: 7, title: "Indemnity and Limitation of Liability", icon: null },
+                      { key: "General" as const, num: 7, title: "General", icon: null },
+                    ]).map(({ key, num, title, icon: Icon }) => (
+                      <section key={key} className={`rounded-xl transition-all ${contractEditing ? "p-4 bg-white/[0.03] border border-white/10 hover:border-accent/20" : ""}`}>
+                        <h3 className="text-lg mb-3 flex items-center gap-2">
+                          {Icon && <Icon className="w-5 h-5 text-accent" />}
+                          {num}. {title}
+                        </h3>
+                        {contractEditing ? (
+                          <textarea
+                            value={contractText[key]}
+                            onChange={e => setContractText(prev => ({ ...prev, [key]: e.target.value }))}
+                            rows={4}
+                            className="w-full bg-transparent border border-white/10 rounded-lg px-3 py-2.5 text-sm opacity-80 focus:outline-none focus:border-accent/40 transition-colors resize-y leading-relaxed"
+                          />
+                        ) : (
+                          <p className="opacity-80 whitespace-pre-line">{contractText[key]}</p>
+                        )}
+                      </section>
+                    ))}
                   </div>
 
                   {/* Signatures */}
                   <div className="mt-12 pt-8 border-t border-white/10">
+                    <h3 className="text-base opacity-60 mb-6">Signatures</h3>
                     <div className="grid md:grid-cols-2 gap-8">
+                      {/* Photographer Signature */}
                       <div>
-                        <p className="text-xs opacity-60 mb-4">
-                          PHOTOGRAPHER SIGNATURE
-                        </p>
+                        <p className="text-xs opacity-60 mb-4">COMPANY SIGNATURE</p>
                         <div className="border-b border-white/20 pb-2 mb-2">
-                          <p className="text-lg italic opacity-60">
-                            Sarah Chen
-                          </p>
+                          <p className="text-xl italic opacity-70" style={{ fontFamily: "Georgia, serif" }}>Midori Media Company</p>
                         </div>
-                        <p className="text-xs opacity-50">
-                          Date:{" "}
-                          {format(
-                            new Date(invoiceData.issueDate),
-                            "MMM dd, yyyy",
-                          )}
-                        </p>
+                        <p className="text-xs opacity-50">Date: {contractStatus && format(new Date(contractStatus?.created_at), "MMM dd, yyyy")}</p>
+                        <div className="mt-3 flex items-center gap-2">
+                          <div className="w-4 h-4 rounded-full bg-accent/20 flex items-center justify-center">
+                            <CheckCircle className="w-3 h-3 text-accent" />
+                          </div>
+                          <span className="text-xs text-accent opacity-80">Signed & verified</span>
+                        </div>
                       </div>
+
+                      {/* Client Signature */}
                       <div>
-                        <p className="text-xs opacity-60 mb-4">
-                          CLIENT SIGNATURE
-                        </p>
-                        <div className="border-b border-white/20 pb-2 mb-2">
-                          <p className="text-lg italic opacity-60">
-                            {mockProject.clientName}
-                          </p>
-                        </div>
-                        <p className="text-xs opacity-50">
-                          Date:{" "}
-                          {format(
-                            new Date(invoiceData.issueDate),
-                            "MMM dd, yyyy",
-                          )}
-                        </p>
+                        <p className="text-xs opacity-60 mb-4">CLIENT SIGNATURE</p>
+                        {clientSigned ? (
+                          <div>
+                            {signMode === "type" ? (
+                              <div className="border-b border-white/20 pb-2 mb-2">
+                                <p className="text-xl italic opacity-90" style={{ fontFamily: "Georgia, serif" }}>{clientSignedName}</p>
+                              </div>
+                            ) : (
+                              <div className="border border-white/10 rounded-xl overflow-hidden mb-2 bg-white/[0.02]">
+                                <canvas
+                                  ref={signatureCanvasRef}
+                                  width={340}
+                                  height={80}
+                                  className="w-full h-16"
+                                />
+                              </div>
+                            )}
+                            <p className="text-xs opacity-50">
+                              Date: {clientSignedDate ? format(new Date(clientSignedDate), "MMM dd, yyyy 'at' h:mm a") : ""}
+                            </p>
+                            <div className="mt-3 flex items-center gap-2">
+                              <div className="w-4 h-4 rounded-full bg-accent/20 flex items-center justify-center">
+                                <CheckCircle className="w-3 h-3 text-accent" />
+                              </div>
+                              <span className="text-xs text-accent opacity-80">Signed by client</span>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="space-y-4">
+                            {/* Sign Mode Toggle */}
+                           
+                           
+                              <div>
+                                <input
+                                  type="text"
+                                  value={clientSignedName}
+                                  onChange={e => setClientSignedName(e.target.value)}
+                                  placeholder="Type your full name..."
+                                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-base focus:outline-none focus:border-accent/50 transition-colors"
+                                  style={{ fontFamily: clientSignedName ? "Georgia, serif" : "inherit", fontStyle: clientSignedName ? "italic" : "normal" }}
+                                />
+                                {clientSignedName && (
+                                  <p className="text-xs opacity-40 mt-1.5">Preview: how your name will appear on the contract</p>
+                                )}
+                              </div>
+                          
+
+                            <button
+                              onClick={handleSignContract}
+                              disabled={signMode === "type" ? !clientSignedName?.trim() : !hasDrawnSignature}
+                              className={`w-full py-3 rounded-xl text-sm flex items-center justify-center gap-2 transition-all ${
+                                (signMode === "type" ? clientSignedName?.trim() : hasDrawnSignature)
+                                  ? "bg-accent hover:bg-accent/90 shadow-lg shadow-accent/20"
+                                  : "bg-white/5 opacity-40 cursor-not-allowed"
+                              }`}
+                            >
+                              <PenLine className="w-4 h-4" />
+                             {signingContract ?'Signing...':'Sign Contract'}
+                            </button>
+                            <p className="text-xs opacity-40 text-center">By signing, you agree to all terms and conditions outlined in this contract.</p>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
 
                   {/* Actions */}
-                  {userRole === "editor" && (
-                    <div className="mt-8 flex gap-3">
-                      <button className="flex items-center gap-2 px-4 py-2.5 border border-white/10 rounded-full text-sm hover:bg-white/5 transition-all">
-                        <Upload className="w-4 h-4" />
-                        <span>Upload Contract</span>
-                      </button>
-                      <button className="flex items-center gap-2 px-4 py-2.5 border border-white/10 rounded-full text-sm hover:bg-white/5 transition-all">
-                        <Download className="w-4 h-4" />
-                        <span>Download PDF</span>
-                      </button>
-                    </div>
-                  )}
+                  <div className="mt-8 flex gap-3">
+                    <button className="flex items-center gap-2 px-4 py-2.5 border border-white/10 rounded-full text-sm hover:bg-white/5 transition-all">
+                      <Download className="w-4 h-4" />
+                      <span>Download PDF</span>
+                    </button>
+                  </div>
                 </div>
               </motion.div>
             )}
@@ -4022,170 +4362,91 @@ crew.member_name?.split(" ").slice(-1)[0]?.[0] || ""
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
                 transition={{ duration: 0.3 }}
-                className="space-y-6"
+                className="space-y-6 max-w-7xl mx-auto"
               >
+                {/* Hidden file inputs */}
+                <input ref={licenseInputRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" multiple className="hidden" onChange={e => handleDocUpload(e, "license")} />
+               
+
                 {/* Business License */}
-                <div className="bg-white/[0.055] border border-white/10 rounded-2xl p-8 shadow-[0_18px_60px_rgba(0,0,0,0.18)]">
-                  <div className="flex items-start gap-4 mb-6">
-                    <div className="w-12 h-12 rounded-xl bg-accent/20 flex items-center justify-center">
-                      <Shield className="w-6 h-6 text-accent" />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="text-xl mb-1">Business License</h3>
-                      <p className="text-sm opacity-60">
-                        Verified and registered business entity
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="grid md:grid-cols-3 gap-6">
-                    <div>
-                      <p className="text-xs opacity-60 mb-1">LICENSE NUMBER</p>
-                      <p className="text-base">BL-2024-PHOTO-8742</p>
-                    </div>
-                    <div>
-                      <p className="text-xs opacity-60 mb-1">
-                        ISSUING AUTHORITY
-                      </p>
-                      <p className="text-base">California State Board</p>
-                    </div>
-                    <div>
-                      <p className="text-xs opacity-60 mb-1">VALIDITY PERIOD</p>
-                      <p className="text-base">Jan 2024 - Jan 2027</p>
-                      <span className="inline-block mt-1 px-2 py-0.5 rounded-full bg-accent/20 text-accent text-xs">
-                        Active
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Insurance */}
-                <div className="bg-white/[0.055] border border-white/10 rounded-2xl p-8 shadow-[0_18px_60px_rgba(0,0,0,0.18)]">
-                  <div className="flex items-start gap-4 mb-6">
-                    <div className="w-12 h-12 rounded-xl bg-[#2d5f4f]/20 flex items-center justify-center">
-                      <Shield className="w-6 h-6 text-emerald-200" />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="text-xl mb-1">
-                        Professional Liability Insurance
-                      </h3>
-                      <p className="text-sm opacity-60">
-                        Comprehensive coverage for equipment and liability
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="grid md:grid-cols-2 gap-6 mb-6">
-                    <div>
-                      <p className="text-xs opacity-60 mb-1">PROVIDER</p>
-                      <p className="text-base">Hiscox Insurance Company</p>
-                    </div>
-                    <div>
-                      <p className="text-xs opacity-60 mb-1">POLICY NUMBER</p>
-                      <p className="text-base">HSX-PROF-2024-5691</p>
-                    </div>
-                    <div>
-                      <p className="text-xs opacity-60 mb-1">COVERAGE TYPE</p>
-                      <div className="flex flex-wrap gap-2 mt-1">
-                        <span className="px-2 py-1 rounded-full bg-white/5 text-xs">
-                          Equipment Coverage
-                        </span>
-                        <span className="px-2 py-1 rounded-full bg-white/5 text-xs">
-                          General Liability
-                        </span>
-                        <span className="px-2 py-1 rounded-full bg-white/5 text-xs">
-                          Professional Indemnity
-                        </span>
-                      </div>
-                    </div>
-                    <div>
-                      <p className="text-xs opacity-60 mb-1">VALIDITY</p>
-                      <p className="text-base">Mar 2024 - Mar 2027</p>
-                      <span className="inline-block mt-1 px-2 py-0.5 rounded-full bg-accent/20 text-accent text-xs">
-                        Active
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="p-4 bg-white/5 rounded-xl">
-                    <p className="text-xs opacity-60 mb-2">COVERAGE AMOUNT</p>
-                    <p className="text-lg">
-                      $2,000,000 General Liability • $500,000 Equipment Coverage
-                    </p>
-                  </div>
-                </div>
-
-                {/* Certifications */}
-                <div className="bg-white/[0.055] border border-white/10 rounded-2xl p-8 shadow-[0_18px_60px_rgba(0,0,0,0.18)]">
-                  <div className="flex items-start gap-4 mb-6">
-                    <div className="w-12 h-12 rounded-xl bg-[#2d5f4f]/15 flex items-center justify-center">
-                      <FileText className="w-6 h-6 text-emerald-100" />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="text-xl mb-1">
-                        Professional Certifications
-                      </h3>
-                      <p className="text-sm opacity-60">
-                        Industry-recognized qualifications
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <div className="p-4 bg-white/5 rounded-xl border border-white/10">
-                      <p className="mb-2">
-                        Certified Professional Photographer (CPP)
-                      </p>
-                      <p className="text-xs opacity-60">
-                        Professional Photographers of America • 2023
-                      </p>
-                    </div>
-                    <div className="p-4 bg-white/5 rounded-xl border border-white/10">
-                      <p className="mb-2">
-                        Advanced Wedding Photography Specialist
-                      </p>
-                      <p className="text-xs opacity-60">
-                        Wedding & Portrait Photographers Int'l • 2022
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Document Attachments */}
-                <div className="bg-white/[0.055] border border-white/10 rounded-2xl p-8 shadow-[0_18px_60px_rgba(0,0,0,0.18)]">
-                  <h3 className="text-xl mb-4">Document Attachments</h3>
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between p-4 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 transition-all cursor-pointer">
-                      <div className="flex items-center gap-3">
-                        <FileText className="w-5 h-5 text-accent" />
-                        <div>
-                          <p className="text-sm">Business_License_2024.pdf</p>
-                          <p className="text-xs opacity-50">248 KB</p>
+                {(() => {
+                  const docs = uploadedDocs.filter(d => d.category === "license");
+                  return (
+                    <div className="bg-white/5 border border-white/10 rounded-2xl p-8">
+                      <div className="flex items-start justify-between gap-4 mb-6">
+                        <div className="flex items-start gap-4">
+                          <div className="w-12 h-12 rounded-xl bg-accent/20 flex items-center justify-center flex-shrink-0">
+                            <Shield className="w-6 h-6 text-accent" />
+                          </div>
+                          <div>
+                            <h3 className="text-xl mb-1">Business License</h3>
+                            <p className="text-sm opacity-60">Upload and manage your business license documents</p>
+                          </div>
                         </div>
+                        <button
+                          onClick={() => licenseInputRef.current?.click()}
+                          className="flex items-center gap-2 px-4 py-2 bg-accent/10 hover:bg-accent/20 border border-accent/30 rounded-full text-sm text-accent transition-all flex-shrink-0"
+                        >
+                          <Upload className="w-4 h-4" />
+                          <span>Upload</span>
+                        </button>
                       </div>
-                      <Download className="w-5 h-5 opacity-50 hover:opacity-100 transition-opacity" />
-                    </div>
-                    <div className="flex items-center justify-between p-4 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 transition-all cursor-pointer">
-                      <div className="flex items-center gap-3">
-                        <FileText className="w-5 h-5 text-accent" />
-                        <div>
-                          <p className="text-sm">
-                            Insurance_Certificate_2024.pdf
-                          </p>
-                          <p className="text-xs opacity-50">512 KB</p>
-                        </div>
-                      </div>
-                      <Download className="w-5 h-5 opacity-50 hover:opacity-100 transition-opacity" />
-                    </div>
-                  </div>
 
-                  {userRole === "editor" && (
-                    <button className="mt-4 flex items-center gap-2 px-4 py-2.5 border border-white/10 rounded-full text-sm hover:bg-white/5 transition-all">
-                      <Upload className="w-4 h-4" />
-                      <span>Upload Document</span>
-                    </button>
-                  )}
-                </div>
+                      {licenses?.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-10 border-2 border-dashed border-white/10 rounded-xl hover:border-accent/20 transition-colors cursor-pointer" onClick={() => licenseInputRef.current?.click()}>
+                          <FileText className="w-10 h-10 opacity-20 mb-3" />
+                          <p className="text-sm opacity-40 mb-1">No documents uploaded</p>
+                          <p className="text-xs opacity-30">Click or drag files to upload your business license</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          {licenses?.map(doc => (
+                            <motion.div
+                              key={doc.id}
+                              initial={{ opacity: 0, y: 8 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              className="group flex items-center justify-between p-4 bg-white/[0.04] border border-white/10 rounded-xl hover:bg-white/[0.07] hover:border-white/20 transition-all"
+                            >
+                              <div className="flex items-center gap-3 flex-1 min-w-0">
+                                <div className="w-9 h-9 rounded-lg bg-accent/15 border border-accent/20 flex items-center justify-center flex-shrink-0">
+                                  <FileText className="w-4 h-4 text-accent" />
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="text-sm truncate">{doc.file_name}</p>
+                                  {/* <p className="text-xs opacity-40">{doc.size} • Uploaded {format(new Date(doc.uploadedAt), "MMM dd, yyyy")}</p> */}
+                                   <a
+    href={doc.preview_url}
+    target="_blank"
+    rel="noopener noreferrer"
+    className="text-accent"
+  >
+    Open Document
+  </a>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2 flex-shrink-0 ml-4">
+                                <button
+                                onClick={()=>{
+                                  handleDownload(doc?.file_id)
+                                }}
+                                className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center transition-all" title="Download">
+                                  <Download className="w-3.5 h-3.5 opacity-60 hover:opacity-100 transition-opacity" />
+                                </button>
+                                {/* <button onClick={() => removeDoc(doc.id)} className="w-8 h-8 rounded-lg bg-white/5 hover:bg-red-500/10 border border-white/10 hover:border-red-500/20 flex items-center justify-center transition-all opacity-0 group-hover:opacity-100" title="Remove">
+                                  <Trash2 className="w-3.5 h-3.5 opacity-50 hover:text-red-400 transition-colors" />
+                                </button> */}
+                              </div>
+                            </motion.div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+
+               
+
+               
               </motion.div>
             )}
           </AnimatePresence>

@@ -155,7 +155,7 @@ const [loading, setLoading] =
           </div>
 
           {/* Filters */}
-          <div className="flex flex-wrap gap-3">
+          {/* <div className="flex flex-wrap gap-3">
             <div className="flex gap-2">
               {["all", "pending", "in-progress", "completed"].map((status) => (
                 <button
@@ -187,7 +187,7 @@ const [loading, setLoading] =
                 </button>
               ))}
             </div>
-          </div>
+          </div> */}
         </motion.div>
 }
         {/* Projects Grid */}
@@ -236,7 +236,7 @@ const [loading, setLoading] =
                     {/* Status */}
                     <div>
                       <div className="flex items-center justify-between mb-2 text-sm">
-                        <span className="opacity-80">{project.current_step}</span>
+                        <span className="opacity-80">{project.current_step}</span> 
                         <span className="opacity-90 tabular-nums">{project.progress_percentage}%</span>
                       </div>
                       <div className="h-1 bg-white/20 rounded-full overflow-hidden">
