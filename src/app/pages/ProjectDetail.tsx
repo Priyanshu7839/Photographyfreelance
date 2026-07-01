@@ -1481,14 +1481,7 @@ const [assetsloading, setassetsLoading] =
   ].assets;
 
 
-  const changeFilter =
-  (filter) => {
-    setSelectedFilter(
-      filter
-    );
-
-    
-  };
+  
 
  useEffect(() => {
   if (
@@ -2500,9 +2493,9 @@ useEffect(() => {
                             <button
                              
                               key={set}
-                              onClick={() => setSetFilter(set)}
+                              onClick={() => setSelectedFilter(set)}
                               className={`px-5 py-2.5 rounded-xl text-sm capitalize transition-all ${
-                                setFilter === set
+                                selectedFilter === set
                                   ? "bg-accent text-background shadow-lg shadow-accent/20"
                                   : "bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20"
                               }`}
