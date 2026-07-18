@@ -3999,7 +3999,9 @@ crew.member_name?.split(" ").slice(-1)[0]?.[0] || ""
                   <div className="mb-8">
                     <p className="text-xs opacity-60 mb-2">BILLED TO</p>
                     <p className="text-lg mb-1">{clientData?.client_name}</p>
-                    <p className="text-sm opacity-70 capitalize">{clientData?.event_name} • {format(new Date(clientData?.event_date), "MMM dd, yyyy")}</p>
+                    <p className="text-sm opacity-70 capitalize">{clientData?.event_name}
+                       {/* • {format(new Date(clientData?.event_date), "MMM dd, yyyy")} */}
+                       </p>
                     <p className="text-sm opacity-70">{clientData?.event_location}</p>
                   </div>
 
