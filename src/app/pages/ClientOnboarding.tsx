@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { ElementType, useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   ArrowRight,
@@ -19,6 +19,10 @@ import {
   Plus,
   X,
   User,
+  UserPlus,
+  Mail,
+  Phone,
+  Search,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router";
 import { adressautocomplete, createClient, getTeamMembers, getWorkflowSteps, getWorkflowTemplates } from "../../Utils/Apicalls";
@@ -46,6 +50,321 @@ const eventTypes = [
   { value: "custom", label: "Custom Event", icon: Briefcase },
 ];
 
+
+
+// ─── Avatar helpers ────────────────────────────────────────────────────────────
+
+function initials(name: string) {
+  return name
+    .split(" ")
+    .map((w) => w[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+}
+
+const AVATAR_COLORS = [
+  "from-accent/50 to-accent/20",
+  "from-blue-500/40 to-blue-500/15",
+  "from-purple-500/40 to-purple-500/15",
+  "from-orange-500/40 to-orange-500/15",
+  "from-pink-500/40 to-pink-500/15",
+  "from-teal-500/40 to-teal-500/15",
+];
+
+function avatarColor(id: string) {
+  const idx = parseInt(id, 10) % AVATAR_COLORS.length;
+  return AVATAR_COLORS[idx] ?? AVATAR_COLORS[0];
+}
+
+// ─── Member Avatar Chip ────────────────────────────────────────────────────────
+
+function MemberChip({ member, onRemove }) {
+  return (
+    <motion.div
+      layout
+      initial={{ opacity: 0, scale: 0.85 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.75 }}
+      className="inline-flex items-center gap-2 pl-1 pr-2 py-1 rounded-full bg-white/[0.06] border border-white/10"
+    >
+      <div className={`w-6 h-6 rounded-full bg-gradient-to-br ${avatarColor(member.member_id)} flex items-center justify-center text-[10px] font-medium flex-shrink-0`}>
+        {member.avatar || initials(member.full_name)}
+      </div>
+      <span className="text-xs text-white/75 whitespace-nowrap">{member.full_name}</span>
+      {onRemove && (
+        <button
+          onClick={onRemove}
+          className="w-4 h-4 rounded-full bg-white/10 hover:bg-red-500/40 flex items-center justify-center transition-colors flex-shrink-0"
+        >
+          <X size={8} />
+        </button>
+      )}
+    </motion.div>
+  );
+}
+
+
+
+// ─── Add Member Mini-Form ──────────────────────────────────────────────────────
+
+interface NewMemberForm { name: string; role: string; email: string; phone: string; }
+
+function AddMemberForm({
+  onAdd,
+  onCancel,
+}: {
+  onAdd: (member) => void;
+  onCancel: () => void;
+}) {
+  const [form, setForm] = useState<NewMemberForm>({ name: "", role: "", email: "", phone: "" });
+  const nameRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => { nameRef.current?.focus(); }, []);
+
+  const isValid = form.name.trim() && form.role.trim();
+
+  function submit() {
+    if (!isValid) return;
+    const id = `custom-${Date.now()}`;
+    onAdd({
+      id,
+      name: form.name.trim(),
+      role: form.role.trim(),
+      email: form.email.trim(),
+      phone: form.phone.trim(),
+      avatar: initials(form.name),
+    });
+  }
+
+  const field = (
+    label: string,
+    key: keyof NewMemberForm,
+    placeholder: string,
+    Icon: ElementType,
+    type = "text",
+    required = false
+  ) => (
+    <div>
+      <label className="block text-[10px] tracking-[0.15em] uppercase text-white/30 mb-1.5">
+        {label}{required && <span className="text-accent ml-0.5">*</span>}
+      </label>
+      <div className="relative">
+        <Icon size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/25 pointer-events-none" />
+        <input
+          ref={key === "name" ? nameRef : undefined}
+          type={type}
+          value={form[key]}
+          onChange={(e) => setForm((p) => ({ ...p, [key]: e.target.value }))}
+          placeholder={placeholder}
+          onKeyDown={(e) => e.key === "Enter" && submit()}
+          className="w-full bg-white/[0.04] border border-white/10 rounded-lg pl-8 pr-3 py-2 text-xs text-white placeholder-white/20 outline-none focus:border-accent/50 focus:bg-white/[0.06] transition-all"
+        />
+      </div>
+    </div>
+  );
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, height: 0 }}
+      animate={{ opacity: 1, height: "auto" }}
+      exit={{ opacity: 0, height: 0 }}
+      transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+      className="overflow-hidden"
+    >
+      <div className="mt-2 p-4 rounded-xl bg-accent/[0.04] border border-accent/15">
+        <p className="text-xs tracking-[0.15em] uppercase text-accent/70 mb-3">New Team Member</p>
+        <div className="grid grid-cols-2 gap-3 mb-3">
+          {field("Full Name", "name", "Jane Smith", User, "text", true)}
+          {field("Role / Position", "role", "Photographer", Briefcase, "text", true)}
+          {field("Email", "email", "jane@studio.com", Mail, "email")}
+          {field("Phone", "phone", "+1 (555) 000-0000", Phone, "tel")}
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={onCancel}
+            className="flex-1 py-2 rounded-lg border border-white/10 text-white/40 text-xs hover:text-white/60 hover:border-white/20 transition-all"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={submit}
+            disabled={!isValid}
+            className={`flex-1 py-2 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 transition-all ${
+              isValid
+                ? "bg-accent text-white hover:bg-accent/90"
+                : "bg-white/5 text-white/20 cursor-not-allowed"
+            }`}
+          >
+            <UserPlus size={12} />
+            Add Member
+          </button>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+// ─── Step Assignee Picker ──────────────────────────────────────────────────────
+
+function StepAssigneePicker({
+  step,
+  allMembers,
+  assignedIds,
+  onToggle,
+  onAddMember,
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const [showAddForm, setShowAddForm] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handle(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+        setShowAddForm(false);
+        setSearch("");
+      }
+    }
+    if (open) document.addEventListener("mousedown", handle);
+    return () => document.removeEventListener("mousedown", handle);
+  }, [open]);
+
+  const filtered = allMembers.filter(
+    (m) =>
+      m?.full_name?.toLowerCase()?.includes(search?.toLowerCase()) ||
+      m?.role?.toLowerCase()?.includes(search?.toLowerCase())
+  );
+
+  const assignedMembers = allMembers?.filter((m) => assignedIds?.includes(m.member_id));
+
+  return (
+    <div ref={ref} className="relative">
+      {/* Assigned chips + add button */}
+      <div className="flex flex-wrap gap-1.5 items-center min-h-[36px]">
+        <AnimatePresence>
+          {assignedMembers?.map((m) => (
+            <MemberChip
+              key={m.id}
+              member={m}
+              onRemove={() => onToggle(m.member_id)}
+            />
+          ))}
+        </AnimatePresence>
+        <button
+          onClick={() => { setOpen((p) => !p); setShowAddForm(false); }}
+          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs border transition-all duration-200 ${
+            open
+              ? "bg-accent/15 border-accent/40 text-accent"
+              : assignedMembers?.length > 0
+              ? "bg-white/[0.04] border-white/10 text-white/40 hover:border-white/20 hover:text-white/60"
+              : "bg-white/[0.04] border-white/10 border-dashed text-white/35 hover:border-accent/40 hover:text-white/60"
+          }`}
+        >
+          <Plus size={11} />
+          {assignedMembers?.length === 0 ? "Assign" : "Add"}
+        </button>
+      </div>
+
+      {/* Dropdown */}
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: 6, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 4, scale: 0.97 }}
+            transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+            className="absolute left-0 top-full mt-2 w-72 bg-[#101410] border border-white/10 rounded-2xl shadow-2xl z-30 overflow-hidden"
+          >
+            {/* Search */}
+            <div className="p-3 border-b border-white/6">
+              <div className="relative">
+                <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/25 pointer-events-none" />
+                <input
+                  autoFocus
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search team..."
+                  className="w-full bg-white/[0.04] border border-white/8 rounded-lg pl-8 pr-3 py-2 text-xs text-white placeholder-white/20 outline-none focus:border-accent/40 transition-all"
+                />
+              </div>
+            </div>
+
+            {/* Member list */}
+            <div className="max-h-48 overflow-y-auto">
+              {filtered.length === 0 ? (
+                <p className="text-xs text-white/25 text-center py-5">No members found</p>
+              ) : (
+                filtered.map((member) => {
+                  const isSelected = assignedIds?.includes(member.member_id);
+                  return (
+                    <button
+                      key={member.member_id}
+                      onClick={() => onToggle(member.member_id)}
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 transition-all hover:bg-white/[0.04] ${
+                        isSelected ? "bg-accent/[0.06]" : ""
+                      }`}
+                    >
+                      <div className={`w-8 h-8 rounded-full bg-gradient-to-br ${avatarColor(member.member_id)} flex items-center justify-center text-xs font-medium flex-shrink-0`}>
+                        {member.full_name
+                      ?.split(" ")
+                      .map((n) => n[0])
+                      .join("")
+                      .slice(0, 2)}
+                      </div>
+                      <div className="flex-1 text-left min-w-0">
+                        <p className="text-sm text-white/80 truncate">{member.full_name}</p>
+                        <p className="text-xs text-white/35 truncate">{member.role}</p>
+                      </div>
+                      <div className={`w-5 h-5 rounded-full border flex items-center justify-center flex-shrink-0 transition-all ${
+                        isSelected
+                          ? "bg-accent border-accent"
+                          : "border-white/15"
+                      }`}>
+                        {isSelected && <Check size={10} className="text-white" />}
+                      </div>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Add new member */}
+            <div className="border-t border-white/6 p-3">
+              <AnimatePresence>
+                {showAddForm ? (
+                  <AddMemberForm
+                    onAdd={(member) => {
+                      onAddMember(member);
+                      onToggle(member.id);
+                      setShowAddForm(false);
+                    }}
+                    onCancel={() => setShowAddForm(false)}
+                  />
+                ) : (
+                  <motion.button
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    onClick={() => setShowAddForm(true)}
+                    className="w-full flex items-center gap-2 px-3 py-2 rounded-xl border border-dashed border-white/10 text-white/35 text-xs hover:border-accent/30 hover:text-white/60 hover:bg-accent/[0.04] transition-all"
+                  >
+                    <UserPlus size={13} />
+                    Add new team member
+                  </motion.button>
+                )}
+              </AnimatePresence>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+
 export default function ClientOnboarding() {
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
@@ -53,6 +372,7 @@ export default function ClientOnboarding() {
   // Step 1 - Client Details
   const [clientName, setClientName] = useState("");
   const [eventDate, setEventDate] = useState("");
+  const [eventEndDate, setEventEndDate] = useState("");
   const [eventType, setEventType] = useState("");
   const [eventLocation, setEventLocation] = useState("");
   const [showEventTypeDropdown, setShowEventTypeDropdown] = useState(false);
@@ -76,7 +396,21 @@ export default function ClientOnboarding() {
 const [templates, setTemplates] = useState([]);
 const [teamAssignments, setTeamAssignments] = useState([]);
 const [teamMembers, setTeamMembers] = useState([]);
+
+
+useEffect(() => {
+  if (workflowSteps?.length) {
+    setTeamAssignments(
+      workflowSteps?.map((step) => ({
+        workflow_step_id: step.workflow_step_id,
+        assigned_member_ids: [],
+      }))
+    );
+  }
+}, [workflowSteps]);
   
+
+
 
 const [query, setQuery] = useState("");
 const [suggestions, setSuggestions] = useState([]);
@@ -157,6 +491,8 @@ useEffect(() => {
     setWorkflowSteps(response.data);
   };
 
+   
+
   const handleAddStep = () => {
     if (newStepName.trim()) {
       const newStep = {
@@ -173,43 +509,47 @@ useEffect(() => {
     setWorkflowSteps(workflowSteps.filter((step) => step.workflow_step_id !== stepId));
   };
 
- const handleAssignTeamMember = (
+const handleAssignTeamMember = (
   workflow_step_id,
   assigned_member_id
 ) => {
-
-  setTeamAssignments((prev) => {
-
-    const existing =
-      prev.find(
-        (item) =>
-          item.workflow_step_id ===
-          workflow_step_id
-      );
-
-    if (existing) {
-      return prev.map((item) =>
-        item.workflow_step_id ===
-        workflow_step_id
-          ? {
-              ...item,
-              assigned_member_id,
-            }
-          : item
-      );
-    }
-
-    return [
-      ...prev,
-      {
-        workflow_step_id,
-        assigned_member_id,
-      },
-    ];
-  });
-
-  setShowAssigneeDropdown(null);
+  setTeamAssignments((prev) =>
+    prev.map((item) =>
+      item.workflow_step_id === workflow_step_id
+        ? {
+            ...item,
+            assigned_member_ids: item.assigned_member_ids.includes(
+              assigned_member_id
+            )
+              ? item.assigned_member_ids.filter(
+                  (id) => id !== assigned_member_id
+                )
+              : [
+                  ...item.assigned_member_ids,
+                  assigned_member_id,
+                ],
+          }
+        : item
+    )
+  );
 };
+
+
+
+
+  // Unique assigned members across all steps (for review)
+const allAssignedIds = Array.from(
+  new Set(
+    teamAssignments.flatMap(
+      (assignment) => assignment.assigned_member_ids
+    )
+  )
+);
+
+const allAssignedMembers = teamMembers.filter((member) =>
+  allAssignedIds.includes(member.member_id)
+);
+
 
   const handleNext = () => {
     if (currentStep < 4) {
@@ -233,6 +573,7 @@ useEffect(() => {
     
        clientName,
       eventDate,
+      eventEndDate,
       eventType,
       selectedLocation,
       workflowSteps,
@@ -274,9 +615,24 @@ useEffect(() => {
     if (currentStep === 2) {
       return selectedTemplate && workflowSteps.length > 0;
     }
+
+    if(currentStep ===3 ){
+      return eachoneAssigned
+    }
     return true;
   };
 
+
+  const today = new Date().toISOString().split("T")[0];
+
+
+  const eachoneAssigned = workflowSteps.every((step) => {
+  const assignment = teamAssignments.find(
+    (a) => a.workflow_step_id === step.workflow_step_id
+  );
+
+  return assignment?.assigned_member_ids?.length > 0;
+});
   return (
     <div className="relative bg-background text-foreground min-h-screen">
       {/* Navigation */}
@@ -362,8 +718,9 @@ useEffect(() => {
               className="space-y-8"
             >
               <div>
-                <h2 className="text-3xl md:text-4xl mb-3 tracking-tight">Client Information</h2>
-                <p className="text-base opacity-60">Start by adding essential project details</p>
+                 <p className="text-xs tracking-[0.25em] uppercase text-accent mb-3">Step 1 of 4</p>
+                <h2 className="text-3xl md:text-4xl font-light text-white mb-2 leading-tight">Client Information</h2>
+                <p className="text-sm text-white/40">Start with the essentials — we'll build the rest around these details.</p>
               </div>
 
               <div className="space-y-6">
@@ -380,11 +737,13 @@ useEffect(() => {
                 </div>
 
                 {/* Event Date */}
-                <div>
-                  <label className="block text-sm opacity-70 mb-2">Event Date</label>
+                <div className="flex items-center gap-2">
+                  <div className="w-full">
+                  <label className="block text-sm opacity-70 mb-2">Event Start Date</label>
                   <div className="relative">
                     <Calendar className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 opacity-40" />
                     <input
+                    min={today}
                       type="date"
                       value={eventDate}
                       onChange={(e) => setEventDate(e.target.value)}
@@ -392,7 +751,21 @@ useEffect(() => {
                     />
                   </div>
                 </div>
-
+                <div className="w-full">
+                  <label className="block text-sm opacity-70 mb-2">Event End Date</label>
+                  <div className="relative">
+                    <Calendar className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 opacity-40" />
+                    <input
+                      type="date"
+                      value={eventEndDate}
+                      min={eventDate}
+                      onChange={(e) => setEventEndDate(e.target.value)}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl pl-14 pr-6 py-4 text-lg focus:outline-none focus:border-accent/50 transition-all"
+                    />
+                  </div>
+                </div>
+ 
+                </div>
                 {/* Event Type */}
                 <div>
                   <label className="block text-sm opacity-70 mb-2">Event Type</label>
@@ -488,8 +861,9 @@ useEffect(() => {
               className="space-y-8"
             >
               <div>
-                <h2 className="text-3xl md:text-4xl mb-3 tracking-tight">Production Workflow</h2>
-                <p className="text-base opacity-60">Choose a workflow template or create your own</p>
+                   <p className="text-xs tracking-[0.25em] uppercase text-accent mb-3">Step 2 of 4</p>
+                <h2 className="text-3xl md:text-4xl font-light text-white mb-2 leading-tight">Production Workflow</h2>
+                <p className="text-sm text-white/40">Pick a template or build a custom pipeline — you can edit steps below.</p>
               </div>
 
               {/* Template Selection */}
@@ -589,296 +963,251 @@ useEffect(() => {
             </motion.div>
           )}
 
-          {/* Step 3 - Team Assignment */}
+         
+
+           {/* ── Step 3: Team Assignment ── */}
           {currentStep === 3 && (
             <motion.div
               key="step3"
-              initial={{ opacity: 0, x: 20 }}
+              initial={{ opacity: 0, x: 24 }}
               animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.3 }}
+              exit={{ opacity: 0, x: -24 }}
+              transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
               className="space-y-8"
             >
               <div>
-                <h2 className="text-3xl md:text-4xl mb-3 tracking-tight">Assign Production Team</h2>
-                <p className="text-base opacity-60">Assign team members to each workflow step</p>
+                <p className="text-xs tracking-[0.25em] uppercase text-accent mb-3">Step 3 of 4</p>
+                <h2 className="text-3xl md:text-4xl font-light text-white mb-2 leading-tight">Assign Production Team</h2>
+                <p className="text-sm text-white/40">Assign one or more team members to each step. You can add new members on the fly.</p>
               </div>
 
-              <div className="space-y-3">
-             {workflowSteps.map((step, index) => {
-  const assignment = teamAssignments.find(
+              <div className="space-y-2">
+                {workflowSteps.map((step, index) => {
+
+  const assignment = teamAssignments?.find(
     (a) =>
       a.workflow_step_id ===
       step.workflow_step_id
   );
 
-  const assignedMember = teamMembers.find(
-    (m) =>
-      m.member_id ===
-      assignment?.assigned_member_id
-  );
+  
 
-  return (
-    <motion.div
-      key={step.workflow_step_id}
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.05 }}
-      className="flex items-center gap-4 p-5 bg-white/5 border border-white/10 rounded-xl"
-    >
-      <div className="flex-1">
-        <p className="text-base">
-          {step.step_name}
-        </p>
-      </div>
-
-      <div className="relative">
-        <button
-          onClick={() =>
-            setShowAssigneeDropdown(
-              showAssigneeDropdown ===
-                step.workflow_step_id
-                ? null
-                : step.workflow_step_id
-            )
-          }
-          className="min-w-[220px] px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-left flex items-center gap-3 hover:bg-white/10 transition-all"
-        >
-          {assignedMember ? (
-            <>
-              <div className="w-7 h-7 rounded-full bg-accent/20 border border-accent/30 flex items-center justify-center text-xs">
-                {assignedMember.full_name
-                  ?.split(" ")
-                  .map((n) => n[0])
-                  .join("")
-                  .slice(0, 2)}
-              </div>
-
-              <div className="flex-1">
-                <p className="text-sm">
-                  {assignedMember.full_name}
-                </p>
-
-                <p className="text-xs opacity-50">
-                  {assignedMember.role}
-                </p>
-              </div>
-            </>
-          ) : (
-            <>
-              <Users className="w-5 h-5 opacity-40" />
-              <span className="opacity-60">
-                Assign team member
-              </span>
-            </>
-          )}
-
-          <ChevronDown
-            className={`w-4 h-4 opacity-40 ml-auto transition-transform ${
-              showAssigneeDropdown ===
-              step.workflow_step_id
-                ? "rotate-180"
-                : ""
-            }`}
-          />
-        </button>
-
-        <AnimatePresence>
-          {showAssigneeDropdown ===
-            step.workflow_step_id && (
-            <motion.div
-              initial={{
-                opacity: 0,
-                y: -10,
-              }}
-              animate={{
-                opacity: 1,
-                y: 0,
-              }}
-              exit={{
-                opacity: 0,
-                y: -10,
-              }}
-              className="absolute top-full mt-2 left-0 right-0 bg-secondary border border-white/10 rounded-xl overflow-hidden shadow-2xl z-20"
-            >
-              {teamMembers.map((member) => (
-                <button
-                  key={member.member_id}
-                  onClick={() =>
-                    handleAssignTeamMember(
-                      step.workflow_step_id,
-                      member.member_id
-                    )
-                  }
-                  className="w-full px-4 py-3 text-left hover:bg-white/5 transition-all flex items-center gap-3 border-b border-white/5 last:border-0"
-                >
-                  <div className="w-8 h-8 rounded-full bg-accent/20 border border-accent/30 flex items-center justify-center text-xs">
-                    {member.full_name
-                      ?.split(" ")
-                      .map((n) => n[0])
-                      .join("")
-                      .slice(0, 2)}
-                  </div>
-
-                  <div className="flex-1">
-                    <p className="text-sm">
-                      {member.full_name}
-                    </p>
-
-                    <p className="text-xs opacity-50">
-                      {member.role}
-                    </p>
-                  </div>
-                </button>
-              ))}
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-    </motion.div>
-  );
-})}
-              </div>
-            </motion.div>
-          )}
-
-          {/* Step 4 - Review */}
-          {currentStep === 4 && (
-            <motion.div
-              key="step4"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.3 }}
-              className="space-y-8"
-            >
-              <div>
-                <h2 className="text-3xl md:text-4xl mb-3 tracking-tight">Review Production Setup</h2>
-                <p className="text-base opacity-60">Confirm all details before launching the project</p>
-              </div>
-
-              <div className="space-y-6">
-                {/* Client Information */}
-                <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-xl">Client Information</h3>
-                    <button
-                      onClick={() => setCurrentStep(1)}
-                      className="text-sm text-accent hover:opacity-80 transition-opacity"
+  
+  
+                  const hasAssignees = assignment?.assigned_member_ids?.length > 0;
+                 
+                  return (
+                    <motion.div
+                      key={step.id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.04 }}
+                      className={`px-5 py-4 rounded-2xl border transition-all duration-200 ${
+                        hasAssignees
+                          ? "bg-accent/[0.04] border-accent/15"
+                          : "bg-white/[0.03] border-white/8"
+                      }`}
                     >
-                      Edit
-                    </button>
-                  </div>
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-xs opacity-60 mb-1">Client Name</p>
-                      <p className="text-base">{clientName}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs opacity-60 mb-1">Event Type</p>
-                      <p className="text-base capitalize">{eventTypes.find((t) => t.value === eventType)?.label}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs opacity-60 mb-1">Event Date</p>
-                      <p className="text-base">{new Date(eventDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs opacity-60 mb-1">Location</p>
-                      <p className="text-base">{selectedLocation}</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Workflow Timeline */}
-                <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-xl">Workflow Timeline</h3>
-                    <button
-                      onClick={() => setCurrentStep(2)}
-                      className="text-sm text-accent hover:opacity-80 transition-opacity"
-                    >
-                      Edit
-                    </button>
-                  </div>
-                  <div className="space-y-2">
-                    {workflowSteps.map((step, index) => (
-                      <div
-                        key={step.workflow_step_id}
-                        className="flex items-center gap-3 p-3 bg-white/5 rounded-xl"
-                      >
-                        <div className="w-6 h-6 rounded-full bg-accent/20 border border-accent/30 flex items-center justify-center text-xs">
-                          {index + 1}
+                      <div className="flex items-start gap-4">
+                        {/* Step number */}
+                        <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs flex-shrink-0 mt-0.5 transition-colors duration-300 ${
+                          hasAssignees
+                            ? "bg-accent/20 border border-accent/35 text-accent"
+                            : "bg-white/[0.05] border border-white/10 text-white/30"
+                        }`}>
+                          {hasAssignees ? <Check size={11} /> : index + 1}
                         </div>
-                        <p className="text-sm">{step.step_name}</p>
+
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-sm font-medium mb-2.5 transition-colors ${hasAssignees ? "text-white/85" : "text-white/55"}`}>
+                            {step.step_name}
+                          </p>
+                          <StepAssigneePicker
+                            step={step}
+                            allMembers={teamMembers}
+                            assignedIds={assignment?.assigned_member_ids || []}
+                            onToggle={(memberId) => handleAssignTeamMember(step.workflow_step_id, memberId)}
+                            // onAddMember={handleAddMember}
+                          />
+                        </div>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+
+              {/* Team roster summary */}
+              {allAssignedMembers.length > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="rounded-2xl border border-white/8 bg-white/[0.02] p-5"
+                >
+                  <p className="text-xs tracking-[0.18em] uppercase text-white/25 mb-4">Crew on this project</p>
+                  <div className="flex flex-wrap gap-2">
+                    {allAssignedMembers?.map((m) => (
+                      <div key={m.member_id} className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/8">
+                        <div className={`w-5 h-5 rounded-full bg-gradient-to-br ${avatarColor(m.id)} flex items-center justify-center text-[9px] font-medium`}>
+                         {initials(m.full_name)}
+                        </div>
+                        <span className="text-xs text-white/60">{m.full_name}</span>
+                        <span className="text-[10px] text-white/25">· {m.role}</span>
                       </div>
                     ))}
                   </div>
-                  <p className="text-xs opacity-50 mt-3">{workflowSteps?.length} total steps</p>
-                </div>
+                </motion.div>
+              )}
+            </motion.div>
+          )}
 
-                {/* Assigned Team */}
-                <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-xl">Assigned Team</h3>
-                    <button
-                      onClick={() => setCurrentStep(3)}
-                      className="text-sm text-accent hover:opacity-80 transition-opacity"
-                    >
+         {/* ── Step 4: Review ── */}
+          {currentStep === 4 && (
+            <motion.div
+              key="step4"
+              initial={{ opacity: 0, x: 24 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -24 }}
+              transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+              className="space-y-8"
+            >
+              <div>
+                <p className="text-xs tracking-[0.25em] uppercase text-accent mb-3">Step 4 of 4</p>
+                <h2 className="text-3xl md:text-4xl font-light text-white mb-2 leading-tight">Review & Launch</h2>
+                <p className="text-sm text-white/40">Everything looks good? Launch the project and your team will be notified.</p>
+              </div>
+
+              <div className="space-y-4">
+                {/* Client Info */}
+                <div className="rounded-2xl border border-white/8 bg-white/[0.02] overflow-hidden">
+                  <div className="flex items-center justify-between px-6 py-4 border-b border-white/6">
+                    <p className="text-xs tracking-[0.18em] uppercase text-white/30">Client</p>
+                    <button onClick={() => setCurrentStep(1)} className="text-xs text-accent hover:text-accent/70 transition-colors">
                       Edit
                     </button>
                   </div>
-                 <div className="space-y-2">
-  {workflowSteps?.map((step) => {
-
-    const assignment =
-      teamAssignments.find(
-        (a) =>
-          a.workflow_step_id ===
-          step.workflow_step_id
-      );
-
-    const assignedMember =
-      teamMembers.find(
-        (m) =>
-          m.member_id ===
-          assignment?.assigned_member_id
-      );
-
-    if (!assignedMember) return null;
-
-    return (
-      <div
-        key={step.workflow_step_id}
-        className="flex items-center justify-between p-3 bg-white/5 rounded-xl"
-      >
-        <p className="text-sm opacity-70">
-          {step.step_name}
-        </p>
-
-        <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-full bg-accent/20 border border-accent/30 flex items-center justify-center text-xs">
-            {assignedMember.full_name
-              ?.split(" ")
-              .map((n) => n[0])
-              .join("")
-              .slice(0, 2)}
-          </div>
-
-          <div>
-            <p className="text-sm">
-              {assignedMember.full_name}
-            </p>
-
-            <p className="text-xs opacity-50">
-              {assignedMember.role}
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  })}
-</div>
+                  <div className="px-6 py-4 grid sm:grid-cols-2 gap-x-8 gap-y-4">
+                    {[
+                      { label: "Name", value: clientName },
+                      { label: "Event Type", value: eventTypes.find((t) => t.value === eventType)?.label ?? "" },
+                      { label: "Date", value: eventDate ? new Date(eventDate).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) : "" },
+                      { label: "Location", value: eventLocation },
+                    ].map(({ label, value }) => (
+                      <div key={label}>
+                        <p className="text-[10px] tracking-[0.15em] uppercase text-white/25 mb-1">{label}</p>
+                        <p className="text-sm text-white/75">{value}</p>
+                      </div>
+                    ))}
+                  </div>
                 </div>
+
+                {/* Workflow + Team */}
+                <div className="rounded-2xl border border-white/8 bg-white/[0.02] overflow-hidden">
+                  <div className="flex items-center justify-between px-6 py-4 border-b border-white/6">
+                    <p className="text-xs tracking-[0.18em] uppercase text-white/30">Workflow & Team</p>
+                    <button onClick={() => setCurrentStep(3)} className="text-xs text-accent hover:text-accent/70 transition-colors">
+                      Edit
+                    </button>
+                  </div>
+                  <div className="px-6 py-4 space-y-2">
+                    {workflowSteps?.map((step, index) => {
+                     const assignment = teamAssignments.find(
+    (a) => a.workflow_step_id === step.workflow_step_id
+  );
+
+  const assigned = teamMembers.filter((member) =>
+    assignment?.assigned_member_ids?.includes(member.member_id)
+  );
+                      return (
+                        <div
+                          key={step.workflow_step_id}
+                          className="flex items-center gap-3 py-2.5 border-b border-white/4 last:border-0"
+                        >
+                          <div className="w-6 h-6 rounded-full bg-accent/10 border border-accent/20 flex items-center justify-center text-[11px] text-accent/60 flex-shrink-0">
+                            {index + 1}
+                          </div>
+                          <p className="text-sm text-white/60 flex-1">{step.step_name}</p>
+                          {assigned.length > 0 ? (
+                            <div className="flex items-center gap-1.5">
+                              <div className="flex -space-x-1.5">
+                                {assigned.slice(0, 4).map((m) => (
+                                  <div
+                                    key={m.member_id}
+                                    title={m.full_name}
+                                    className={`w-6 h-6 rounded-full bg-gradient-to-br ${avatarColor(m.member_id)} border border-background flex items-center justify-center text-[9px] font-medium`}
+                                  >
+                                    {initials(m.full_name)}
+                                  </div>
+                                ))}
+                                {assigned.length > 4 && (
+                                  <div className="w-6 h-6 rounded-full bg-white/10 border border-background flex items-center justify-center text-[9px] text-white/50">
+                                    +{assigned.length - 4}
+                                  </div>
+                                )}
+                              </div>
+                              <span className="text-xs text-white/35 hidden sm:block">
+                                {assigned.length === 1 ? assigned[0].full_name : `${assigned.length} members`}
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-white/20 italic">Unassigned</span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="px-6 py-3 border-t border-white/6 flex items-center justify-between">
+                    <span className="text-xs text-white/20">{workflowSteps?.length} steps total</span>
+                    <span className="text-xs text-white/20">{allAssignedMembers?.length} crew members</span>
+                  </div>
+                </div>
+
+                {/* Full crew list */}
+                {allAssignedMembers.length > 0 && (
+                  <div className="rounded-2xl border border-white/8 bg-white/[0.02] overflow-hidden">
+                    <div className="px-6 py-4 border-b border-white/6">
+                      <p className="text-xs tracking-[0.18em] uppercase text-white/30">Full Crew Roster</p>
+                    </div>
+                    <div className="px-6 py-4 space-y-3">
+                  {allAssignedMembers.map((member) => {
+  const stepsForMember = workflowSteps.filter((step) => {
+    const assignment = teamAssignments.find(
+      (a) => a.workflow_step_id === step.workflow_step_id
+    );
+
+    return assignment?.assigned_member_ids?.includes(member.member_id);
+  });
+
+  return (
+    <div key={member.member_id} className="flex items-center gap-3">
+      <div
+        className={`w-8 h-8 rounded-full bg-gradient-to-br ${avatarColor(
+          member.member_id
+        )} flex items-center justify-center text-xs font-medium flex-shrink-0`}
+      >
+        {initials(member.full_name)}
+      </div>
+
+      <div className="flex-1 min-w-0">
+        <p className="text-sm text-white/75">{member.full_name}</p>
+        <p className="text-xs text-white/30">{member.role}</p>
+      </div>
+
+      <div className="flex flex-wrap gap-1 justify-end max-w-[40%]">
+        {stepsForMember.map((step) => (
+          <span
+            key={step.workflow_step_id}
+            className="text-[10px] px-2 py-0.5 rounded-full bg-white/[0.04] border border-white/8 text-white/30 whitespace-nowrap"
+          >
+            {step.step_name}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+})}
+                    </div>
+                  </div>
+                )}
               </div>
             </motion.div>
           )}

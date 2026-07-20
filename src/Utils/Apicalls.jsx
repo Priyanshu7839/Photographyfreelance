@@ -845,3 +845,32 @@ export const clientLogin =
       );
     }
   };
+
+ export const getInvoice =
+  async (clientId) => {
+    try {
+      const response =
+        await api.get(
+          `/project/${clientId}/invoice`
+        );
+
+      return response.data;
+    } catch (error) {
+      throw new Error(
+        error.response?.data
+          ?.message ||
+          "Failed to get Invoices"
+      );
+    }
+  };
+
+  export const addInvoiceItem = async (clientId, invoiceItem) => {
+
+    console.log(clientId,invoiceItem)
+  const response = await api.post(
+    `/project/${clientId}/invoices/items`,
+    invoiceItem
+  );
+
+  return response.data;
+};

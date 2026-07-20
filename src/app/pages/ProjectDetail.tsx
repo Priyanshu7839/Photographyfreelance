@@ -50,11 +50,13 @@ import {
   Save,
   PenLine,
   Check,
+  ChevronDown,
 } from "lucide-react";
 import { Link, useParams } from "react-router";
 import { addMinutes, format } from "date-fns";
 import { toast } from "sonner";
 import {
+  addInvoiceItem,
   addMoodboardDiscussion,
   addMoodboardSong,
   addProjectStep,
@@ -71,6 +73,7 @@ import {
   getClientOverview,
   getClientWorkflow,
   getContractStatus,
+  getInvoice,
   getMoodboardAssets,
   getMoodboardDiscussions,
   getMoodboardSongs,
@@ -1282,6 +1285,7 @@ console.log(response.data)
       const response = await getClientWorkflow(clientId);
   
       setWorkflowData(response.data);
+      console.log(response.data)
     } catch (error) {
       toast.error(error.message);
     } finally {
@@ -1705,29 +1709,178 @@ const fetchMoodboardAssets =
 
 
   // ---------------------------------------Invoices------------------
-    const [invoiceItems, setInvoiceItems] = useState(() => invoiceData.items.map((item, i) => ({ ...item, id: i })));
-  const [editingInvoiceRow, setEditingInvoiceRow] = useState<number | null>(null);
-  const [invoiceRowDraft, setInvoiceRowDraft] = useState<{ description: string; quantity: number; rate: number } | null>(null);
 
-  const computedSubtotal = invoiceItems.reduce((s, i) => s + i.amount, 0);
-  const computedTax = Math.round(computedSubtotal * 0.1);
-  const computedTotal = computedSubtotal + computedTax - invoiceData.discount;
+  const invoiceData = {
+  invoiceNumber: "INV-2026-0542",
+  issueDate: "2026-03-15",
+  dueDate: "2026-05-01",
+  businessName: "Midori Media",
+  items: [
+    {
+      description: "Wedding Shoot Package",
+      quantity: 1,
+      rate: 3500,
+      amount: 3500,
+    },
+    { description: "Pre-wedding Shoot", quantity: 1, rate: 1200, amount: 1200 },
+    {
+      description: "Editing & Color Grading (500+ photos)",
+      quantity: 1,
+      rate: 800,
+      amount: 800,
+    },
+    {
+      description: "Highlight Video (5-7 min)",
+      quantity: 1,
+      rate: 1500,
+      amount: 1500,
+    },
+    {
+      description: `Travel & Driving Charges (${totalBillableMiles} billable miles @ $${travelSettings.ratePerMile}/mile)`,
+      quantity: 1,
+      rate: totalTravelFees,
+      amount: totalTravelFees,
+    },
+    {
+      description: "Additional Coverage Hours",
+      quantity: 3,
+      rate: 200,
+      amount: 600,
+    },
+  ],
+  subtotal: baseSubtotal + totalTravelFees,
+  tax: Math.round((baseSubtotal + totalTravelFees) * 0.1),
+  discount: 500,
+  total:
+    baseSubtotal +
+    totalTravelFees +
+    Math.round((baseSubtotal + totalTravelFees) * 0.1) -
+    500,
+  paymentStatus: "Partially Paid" as const,
+  paymentMethod: "Bank Transfer",
+  amountPaid: 4000,
+  notes:
+    "Thank you for choosing Midori Media for your special day. We're honored to capture your memories!",
+};
+
+const [invoice,setInvoices] = useState(null)
+const [invoiceLoading,setInvoiceLoading] = useState(false)
+
+
+    const fetchInvoices = async () => {
+  try {
+    setInvoiceLoading(true);
+
+    const res = await getInvoice(clientId);
+
+    if (res.success) {
+      setInvoices(res.data);
+      console.log(res.data)
+    }
+  } catch (err) {
+    toast.error(
+      err.response?.data?.message || "Failed to fetch invoices"
+    );
+  } finally {
+    setInvoiceLoading(false);
+  }
+};
+
+
+const [invoicePaymentStatus, setInvoicePaymentStatus] = useState<"Paid" | "Partially Paid" | "Unpaid">(invoiceData.paymentStatus);
+const [showPaymentStatusMenu, setShowPaymentStatusMenu] = useState(false);
+
+    const [invoiceItems, setInvoiceItems] = useState([]);
+    useEffect(() => {
+  if (invoice?.invoice_items) {
+    setInvoiceItems(
+      invoice?.invoice_items?.map((item, index) => ({
+        ...item,
+        id: index,
+      }))
+    );
+  }
+}, [invoice]);
+
+  const [addingInvoiceRow, setAddingInvoiceRow] = useState(false);
+  const [editingInvoiceRow, setEditingInvoiceRow] = useState<number | null>(null);
+  const [invoiceRowDraft, setInvoiceRowDraft] = useState<{ id:number; item_name: string; quantity: number; rate: number } | null>(null);
+
+
+  const [newRowDraft, setNewRowDraft] = useState({item_name: "", quantity: 1, rate: 0 });
+
 
   function startEditInvoiceRow(idx: number) {
     const item = invoiceItems[idx];
-    setInvoiceRowDraft({ description: item.description, quantity: item.quantity, rate: item.rate });
+    console.log(item)
+    setInvoiceRowDraft({ id:item.invoice_item_id,item_name: item.item_name, quantity: item.quantity, rate: item.rate,invoice_id:item.invoice_id });
     setEditingInvoiceRow(idx);
   }
 
   function saveInvoiceRow(idx: number) {
     if (!invoiceRowDraft) return;
     setInvoiceItems(prev => prev.map((item, i) => i === idx
-      ? { ...item, description: invoiceRowDraft.description, quantity: invoiceRowDraft.quantity, rate: invoiceRowDraft.rate, amount: invoiceRowDraft.quantity * invoiceRowDraft.rate }
+      ? { ...item, item_name: invoiceRowDraft.item_name, quantity: invoiceRowDraft.quantity, rate: invoiceRowDraft.rate, amount: invoiceRowDraft.quantity * invoiceRowDraft.rate,invoice_item_id:invoiceRowDraft.id,invoice_id:invoiceRowDraft.invoice_id }
       : item
     ));
     setEditingInvoiceRow(null);
     setInvoiceRowDraft(null);
   }
+
+   function deleteInvoiceRow(idx: number) {
+    setInvoiceItems(prev => prev.filter((_, i) => i !== idx));
+    if (editingInvoiceRow === idx) { setEditingInvoiceRow(null); setInvoiceRowDraft(null); }
+  }
+
+  const commitNewRow=async()=> {
+    if (!newRowDraft.item_name.trim()) return;
+    // setInvoiceItems(prev => [...prev, {
+    //   id: Date.now(),
+    //   description: newRowDraft.description,
+    //   quantity: newRowDraft.quantity,
+    //   rate: newRowDraft.rate,
+    //   amount: newRowDraft.quantity * newRowDraft.rate,
+    // }]);
+
+    setAddingInvoiceRow(false)
+
+
+    
+  try {
+   
+
+    const payload = {
+      item_name: newRowDraft.item_name,
+      quantity: Number(newRowDraft.quantity),
+      rate: Number(newRowDraft.rate),
+    };
+
+    const res = await addInvoiceItem(clientId, payload);
+
+    if (res.success) {
+      toast.success("Invoice item added successfully");
+
+      // Refresh invoice data
+      fetchInvoices();
+
+     
+    }
+  } catch (err) {
+    toast.error(
+      err.response?.data?.message || "Failed to add invoice item"
+    );
+  } finally {
+    
+    setNewRowDraft({ item_name: "", quantity: 1, rate: 0 });
+  }
+
+
+    
+
+  }
+
+ 
+
 
   function cancelEditInvoiceRow() {
     setEditingInvoiceRow(null);
@@ -2034,6 +2187,10 @@ useEffect(() => {
       fetchProductionOverview()
     }
 
+
+    if(activeTab === 'invoices' && invoice === null) {
+      fetchInvoices()
+    }
    
 
  if(activeTab === 'travel' && !travelData){
@@ -3037,11 +3194,18 @@ useEffect(() => {
                                 <h4 className="text-lg mb-2 capitalize">
                                   {step.step_name}
                                 </h4>
-                                <div className="flex flex-wrap items-center gap-3 text-sm opacity-60">
+                                <div className="flex flex-col flex-wrap items-start gap-3 text-sm opacity-60">
+                                    {step?.assigned_members?.map((m,i)=>{
+                                      return(
                                   <div className="flex items-center gap-1.5 capitalize">
                                     <User className="w-4 h-4" />
-                                    <span>{step.assigned_member}</span>
+                                  
+
+                                          <span key={i}>{m.full_name}</span>
+                                     
                                   </div>
+                                   )
+                                    }) }
                                   {step.completed_at && (
                                     <div className="flex items-center gap-1.5">
                                       <Clock className="w-4 h-4" />
@@ -3957,6 +4121,66 @@ crew.member_name?.split(" ").slice(-1)[0]?.[0] || ""
                 exit={{ opacity: 0, y: -20 }}
                 transition={{ duration: 0.3 }}
               >
+                  {/* --------editing ------------------------------- */}
+                  <div className="flex items-center justify-between mb-5 max-w-4xl mx-auto">
+                    <div className="flex items-center gap-2">
+                      {/* Payment status selector */}
+                      <div className="relative">
+                        <button
+                          onClick={() => setShowPaymentStatusMenu(p => !p)}
+                          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl border text-xs font-medium transition-all ${
+                            invoicePaymentStatus === "Paid"
+                              ? "bg-accent/10 border-accent/30 text-accent"
+                              : invoicePaymentStatus === "Partially Paid"
+                              ? "bg-blue-500/10 border-blue-500/25 text-blue-300"
+                              : "bg-orange-500/10 border-orange-500/25 text-orange-300"
+                          }`}
+                        >
+                          <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
+                            invoicePaymentStatus === "Paid" ? "bg-accent" : invoicePaymentStatus === "Partially Paid" ? "bg-blue-400" : "bg-orange-400"
+                          }`} />
+                          {invoicePaymentStatus}
+                          <ChevronDown className="w-3 h-3 opacity-60" />
+                        </button>
+                        <AnimatePresence>
+                          {showPaymentStatusMenu && (
+                            <motion.div
+                              initial={{ opacity: 0, y: -6, scale: 0.97 }}
+                              animate={{ opacity: 1, y: 0, scale: 1 }}
+                              exit={{ opacity: 0, y: -4, scale: 0.97 }}
+                              transition={{ duration: 0.15 }}
+                              className="absolute top-full mt-2 left-0 w-44 bg-[#111411] border border-white/10 rounded-xl overflow-hidden shadow-2xl z-30"
+                            >
+                              {(["Paid", "Partially Paid", "Unpaid"] as const).map(status => (
+                                <button
+                                  key={status}
+                                  onClick={() => { setInvoicePaymentStatus(status); setShowPaymentStatusMenu(false); }}
+                                  className={`w-full flex items-center gap-2.5 px-4 py-2.5 text-xs text-left hover:bg-white/5 transition-colors border-b border-white/5 last:border-0 ${invoicePaymentStatus === status ? "text-accent" : "text-white/70"}`}
+                                >
+                                  <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
+                                    status === "Paid" ? "bg-accent" : status === "Partially Paid" ? "bg-blue-400" : "bg-orange-400"
+                                  }`} />
+                                  {status}
+                                  {invoicePaymentStatus === status && <Check className="w-3 h-3 ml-auto text-accent" />}
+                                </button>
+                              ))}
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    </div>
+
+                    {/* Add line item */}
+                    <button
+                      onClick={() => { setAddingInvoiceRow(true); setEditingInvoiceRow(null); setInvoiceRowDraft(null); }}
+                      className="flex items-center gap-2 px-4 py-2 bg-accent/10 hover:bg-accent/15 border border-accent/25 hover:border-accent/40 text-accent rounded-xl text-xs font-medium transition-all"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      Add Line Item
+                    </button>
+                  </div>
+                  {/* ----------------------------------------------- */}
+
                 <div className="bg-white/5 border border-white/10 rounded-2xl p-8 md:p-12 max-w-4xl mx-auto">
                   {/* Invoice Header */}
                   <div className="border-b border-white/10 pb-8 mb-8">
@@ -4020,9 +4244,9 @@ crew.member_name?.split(" ").slice(-1)[0]?.[0] || ""
                         </tr>
                       </thead>
                       <tbody>
-                        {invoiceItems.map((item, index) => (
+                        {invoiceItems?.map((item, index) => (
                           <tr
-                            key={item.id}
+                            key={item.invoice_item_id}
                             className={`border-b border-white/5 transition-colors ${editingInvoiceRow === index ? "bg-white/5" : "hover:bg-white/[0.03]"}`}
                           >
                             {editingInvoiceRow === index && invoiceRowDraft ? (
@@ -4030,8 +4254,8 @@ crew.member_name?.split(" ").slice(-1)[0]?.[0] || ""
                                 <td className="py-3 pr-3">
                                   <input
                                     type="text"
-                                    value={invoiceRowDraft.description}
-                                    onChange={e => setInvoiceRowDraft(d => d ? { ...d, description: e.target.value } : d)}
+                                    value={invoiceRowDraft.item_name}
+                                    onChange={e => setInvoiceRowDraft(d => d ? { ...d, item_name: e.target.value } : d)}
                                     className="w-full bg-white/5 border border-accent/30 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-accent/60 transition-colors"
                                   />
                                 </td>
@@ -4078,7 +4302,7 @@ crew.member_name?.split(" ").slice(-1)[0]?.[0] || ""
                               </>
                             ) : (
                               <>
-                                <td className="py-4 text-sm">{item.description}</td>
+                                <td className="py-4 text-sm">{item.item_name}</td>
                                 <td className="py-4 text-right opacity-70 text-sm">{item.quantity}</td>
                                 <td className="py-4 text-right opacity-70 text-sm">${item.rate.toLocaleString()}</td>
                                 <td className="py-4 text-right text-sm">${item.amount.toLocaleString()}</td>
@@ -4099,8 +4323,70 @@ crew.member_name?.split(" ").slice(-1)[0]?.[0] || ""
                             )}
                           </tr>
                         ))}
+
+                        {/* New row form */}
+                        {addingInvoiceRow && (
+                          <tr className="border-b border-white/5 bg-accent/[0.03]">
+                            <td className="py-3 pr-3">
+                              <input
+                                autoFocus
+                                type="text"
+                                value={newRowDraft.item_name}
+                                onChange={e => setNewRowDraft(d => ({ ...d, item_name: e.target.value }))}
+                                onKeyDown={e => { if (e.key === "Enter") commitNewRow(); if (e.key === "Escape") setAddingInvoiceRow(false); }}
+                                placeholder="Line item description..."
+                                className="w-full bg-white/[0.04] border border-accent/25 rounded-lg px-3 py-1.5 text-sm placeholder-white/20 focus:outline-none focus:border-accent/50 transition-colors"
+                              />
+                            </td>
+                            <td className="py-3 px-2">
+                              <input
+                                type="number"
+                                min={1}
+                                value={newRowDraft.quantity}
+                                onChange={e => setNewRowDraft(d => ({ ...d, quantity: Number(e.target.value) }))}
+                                className="w-16 bg-white/[0.04] border border-accent/25 rounded-lg px-2 py-1.5 text-sm text-right focus:outline-none focus:border-accent/50 transition-colors"
+                              />
+                            </td>
+                            <td className="py-3 px-2">
+                              <div className="flex items-center justify-end gap-1">
+                                <span className="text-sm opacity-40">$</span>
+                                <input
+                                  type="number"
+                                  min={0}
+                                  value={newRowDraft.rate}
+                                  onChange={e => setNewRowDraft(d => ({ ...d, rate: Number(e.target.value) }))}
+                                  className="w-24 bg-white/[0.04] border border-accent/25 rounded-lg px-2 py-1.5 text-sm text-right focus:outline-none focus:border-accent/50 transition-colors"
+                                />
+                              </div>
+                            </td>
+                            <td className="py-3 text-right text-sm text-accent/60 font-medium">
+                              ${(newRowDraft.quantity * newRowDraft.rate).toLocaleString()}
+                            </td>
+                            <td className="py-3 pl-3">
+                              <div className="flex gap-1 justify-end">
+                                <button onClick={commitNewRow} className="w-7 h-7 rounded-lg bg-accent/15 hover:bg-accent/25 border border-accent/25 flex items-center justify-center transition-colors" title="Add">
+                                  <Check className="w-3.5 h-3.5 text-accent" />
+                                </button>
+                                <button onClick={() => setAddingInvoiceRow(false)} className="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center transition-colors" title="Cancel">
+                                  <X className="w-3.5 h-3.5 opacity-50" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
                       </tbody>
                     </table>
+
+                     {/* Add row shortcut when not already adding */}
+                    {!addingInvoiceRow && (
+                      <button
+                        onClick={() => { setAddingInvoiceRow(true); setEditingInvoiceRow(null); setInvoiceRowDraft(null); }}
+                        className="mt-3 w-full flex items-center gap-2 px-4 py-2.5 rounded-xl border border-dashed border-white/10 hover:border-accent/25 hover:bg-accent/[0.03] text-white/25 hover:text-white/50 text-xs transition-all"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        Add line item
+                      </button>
+                    )}
                   </div>
 
                   {/* Summary */}
@@ -4108,23 +4394,23 @@ crew.member_name?.split(" ").slice(-1)[0]?.[0] || ""
                     <div className="w-full md:w-80 space-y-3">
                       <div className="flex justify-between text-sm">
                         <span className="opacity-60">Subtotal</span>
-                        <span>${computedSubtotal.toLocaleString()}</span>
+                        <span>${invoice?.subtotal_amount}</span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span className="opacity-60">Tax (10%)</span>
-                        <span>${computedTax.toLocaleString()}</span>
+                        <span>${invoice?.tax_amount}</span>
                       </div>
-                      {invoiceData.discount > 0 && (
+                      {invoice?.discount_amount > 0 && (
                         <div className="flex justify-between text-sm text-accent">
                           <span>Discount</span>
-                          <span>-${invoiceData.discount.toLocaleString()}</span>
+                          <span>-${invoice?.discount_amount?.toLocaleString()}</span>
                         </div>
                       )}
                       <div className="border-t border-white/10 pt-3 flex justify-between text-xl">
                         <span>Total</span>
-                        <span className="text-accent">${computedTotal.toLocaleString()}</span>
+                        <span className="text-accent">${invoice?.final_amount?.toLocaleString()}</span>
                       </div>
-                      {invoiceData.paymentStatus === "Partially Paid" && (
+                      {/* {invoiceData.paymentStatus === "Partially Paid" && (
                         <>
                           <div className="flex justify-between text-sm opacity-70">
                             <span>Amount Paid</span>
@@ -4135,7 +4421,7 @@ crew.member_name?.split(" ").slice(-1)[0]?.[0] || ""
                             <span className="text-orange-300">${(computedTotal - invoiceData.amountPaid).toLocaleString()}</span>
                           </div>
                         </>
-                      )}
+                      )} */}
                     </div>
                   </div>
 
@@ -4143,11 +4429,11 @@ crew.member_name?.split(" ").slice(-1)[0]?.[0] || ""
                   <div className="border-t border-white/10 pt-6 space-y-4">
                     <div>
                       <p className="text-xs opacity-60 mb-1">PAYMENT METHOD</p>
-                      <p className="text-sm">{invoiceData.paymentMethod}</p>
+                      <p className="text-sm">{invoice?.payment_method}</p>
                     </div>
                     <div>
                       <p className="text-xs opacity-60 mb-2">NOTES</p>
-                      <p className="text-sm opacity-80 italic">{invoiceData.notes}</p>
+                      <p className="text-sm opacity-80 italic">"Thank you for choosing Midori Media for your special day. We're honored to capture your memories!"</p>
                     </div>
                   </div>
 

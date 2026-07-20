@@ -102,9 +102,9 @@ const isMobile = window.matchMedia("(max-width: 600px)").matches;
       <motion.nav
         initial={{ y: -100 }}
         animate={{ y: 0 }}
-        className="fixed top-0 left-0 right-0 z-50 px-4 md:px-6 py-4 md:py-6 flex items-center justify-between backdrop-blur-sm bg-background/80"
+        className=" w-screen top-0 left-0 right-0 z-50 px-4 md:px-6 py-4 md:py-6 flex items-center justify-between backdrop-blur-sm bg-background/80"
       >
-        <Menu onClick={()=>{setMenuOpen(!MenuOpen)}}/>
+        <Menu className="hidden max-sm:block" onClick={()=>{setMenuOpen(!MenuOpen)}}/>
             {MenuOpen &&<motion.div 
              initial={{ y: -100 }}
         animate={{ y: 0 }}
@@ -115,14 +115,22 @@ const isMobile = window.matchMedia("(max-width: 600px)").matches;
           <Link onClick={()=>{setMenuOpen(!MenuOpen)}} to="/workspace" className="block text-sm opacity-70 hover:opacity-100 transition-opacity">
             Enter Workspace
           </Link>
+
+          <Link
+            to="/wedding-builder"
+            className="flex items-center gap-1.5 border border-accent/50 bg-accent text-white hover:bg-accent/90 px-4 md:px-5 py-2 md:py-2.5 text-xs md:text-sm rounded-full  hover:border-accent transition-all duration-300"
+            style={{ boxShadow: "0 0 16px rgba(45,95,79,0.15)" }}
+          >
+            <span>Build Your Package</span>
+          </Link>
             </motion.div>}
 
         <Link to="/" className="text-xl md:text-2xl tracking-tight">Midori Media</Link>
-        <div className="flex gap-4 md:gap-8 items-center">
-          <a href="#portfolio" className="hidden sm:block text-sm opacity-70 hover:opacity-100 transition-opacity ">Portfolio</a>
-          <a href="#services" className="hidden sm:block text-sm opacity-70 hover:opacity-100 transition-opacity">Services</a>
-          <a href="#process" className="hidden md:block text-sm opacity-70 hover:opacity-100 transition-opacity">Process</a>
-          <Link to="/workspace" className="hidden lg:block text-sm opacity-70 hover:opacity-100 transition-opacity">
+        <div className=" gap-4 md:gap-8 items-center hidden lg:flex">
+          <a href="#portfolio" className=" text-sm opacity-70 hover:opacity-100 transition-opacity ">Portfolio</a>
+          <a href="#services" className=" text-sm opacity-70 hover:opacity-100 transition-opacity">Services</a>
+          <a href="#process" className=" text-sm opacity-70 hover:opacity-100 transition-opacity">Process</a>
+          <Link to="/workspace" className=" text-sm opacity-70 hover:opacity-100 transition-opacity">
             Enter Workspace
           </Link>
           <Link
