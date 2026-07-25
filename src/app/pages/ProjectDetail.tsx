@@ -51,6 +51,10 @@ import {
   PenLine,
   Check,
   ChevronDown,
+  Receipt,
+  Route,
+  Minus,
+  Pencil,
 } from "lucide-react";
 import { Link, useParams } from "react-router";
 import { addMinutes, format } from "date-fns";
@@ -62,6 +66,7 @@ import {
   addProjectStep,
   addTravelDiscussion,
   assignGears,
+  deleteInvoiceItems,
   deleteMoodboardSong,
   downloadClientLicense,
   downloadFile,
@@ -85,6 +90,7 @@ import {
   signContract,
   updateClient,
   updateClientNotes,
+  updateInvoiceItems,
   updateWorkflowStatus,
   uploadMultipartFileClientassets,
 } from "../../Utils/Apicalls";
@@ -453,14 +459,20 @@ const availableGear = {
   ],
 };
 
-// Travel tracking data
+
+
 const travelSettings = {
   studioLocation: "Midori Media Studio, Downtown LA",
-  shootLocation: "Riverside Gardens, California",
   freeAllowanceMiles: 20,
-  ratePerMile: 2,
-  totalDistance: 42,
+  ratePerMile: 0.7,
 };
+
+const INITIAL_TRAVEL_LOCATIONS = [
+  { id: 1, step: "Pre-wedding Shoot", venue: "Elysian Park, Los Angeles", distance: 18 },
+  { id: 2, step: "Event Coverage – Ceremony", venue: "Riverside Gardens, California", distance: 42 },
+  { id: 3, step: "Event Coverage – Reception", venue: "The Grand Ballroom, Pasadena", distance: 38 },
+  { id: 4, step: "Portrait Session", venue: "Griffith Observatory, LA", distance: 12 },
+];
 
 const crewTravelData = [
   {
@@ -471,37 +483,12 @@ const crewTravelData = [
     color: "accent",
     distance: 42,
     timeline: [
-      {
-        id: 1,
-        step: "Assigned to Shoot",
-        status: "completed",
-        timestamp: "2026-05-15T08:00:00",
-      },
-      {
-        id: 2,
-        step: "Out for Shoot",
-        status: "completed",
-        timestamp: "2026-05-15T08:40:00",
-      },
-      {
-        id: 3,
-        step: "Arrived at Location",
-        status: "completed",
-        timestamp: "2026-05-15T09:32:00",
-      },
-      {
-        id: 4,
-        step: "Setup Complete",
-        status: "completed",
-        timestamp: "2026-05-15T09:50:00",
-      },
-      {
-        id: 5,
-        step: "Shoot Wrapped",
-        status: "completed",
-        timestamp: "2026-05-15T18:30:00",
-      },
-    ],
+      { id: 1, step: "Assigned to Shoot", status: "completed", timestamp: "2026-05-15T08:00:00" },
+      { id: 2, step: "Out for Shoot", status: "completed", timestamp: "2026-05-15T08:40:00" },
+      { id: 3, step: "Arrived at Location", status: "completed", timestamp: "2026-05-15T09:32:00" },
+      { id: 4, step: "Setup Complete", status: "completed", timestamp: "2026-05-15T09:50:00" },
+      { id: 5, step: "Shoot Wrapped", status: "completed", timestamp: "2026-05-15T18:30:00" }
+    ]
   },
   {
     id: 2,
@@ -511,37 +498,12 @@ const crewTravelData = [
     color: "blue",
     distance: 42,
     timeline: [
-      {
-        id: 1,
-        step: "Assigned to Shoot",
-        status: "completed",
-        timestamp: "2026-05-15T08:00:00",
-      },
-      {
-        id: 2,
-        step: "Out for Shoot",
-        status: "completed",
-        timestamp: "2026-05-15T08:35:00",
-      },
-      {
-        id: 3,
-        step: "Arrived at Location",
-        status: "completed",
-        timestamp: "2026-05-15T09:28:00",
-      },
-      {
-        id: 4,
-        step: "Setup Complete",
-        status: "completed",
-        timestamp: "2026-05-15T09:55:00",
-      },
-      {
-        id: 5,
-        step: "Shoot Wrapped",
-        status: "completed",
-        timestamp: "2026-05-15T18:45:00",
-      },
-    ],
+      { id: 1, step: "Assigned to Shoot", status: "completed", timestamp: "2026-05-15T08:00:00" },
+      { id: 2, step: "Out for Shoot", status: "completed", timestamp: "2026-05-15T08:35:00" },
+      { id: 3, step: "Arrived at Location", status: "completed", timestamp: "2026-05-15T09:28:00" },
+      { id: 4, step: "Setup Complete", status: "completed", timestamp: "2026-05-15T09:55:00" },
+      { id: 5, step: "Shoot Wrapped", status: "completed", timestamp: "2026-05-15T18:45:00" }
+    ]
   },
   {
     id: 3,
@@ -551,61 +513,19 @@ const crewTravelData = [
     color: "purple",
     distance: 38,
     timeline: [
-      {
-        id: 1,
-        step: "Assigned to Shoot",
-        status: "completed",
-        timestamp: "2026-05-15T08:00:00",
-      },
-      {
-        id: 2,
-        step: "Out for Shoot",
-        status: "completed",
-        timestamp: "2026-05-15T09:15:00",
-      },
-      {
-        id: 3,
-        step: "Arrived at Location",
-        status: "completed",
-        timestamp: "2026-05-15T10:05:00",
-      },
-      {
-        id: 4,
-        step: "Setup Complete",
-        status: "completed",
-        timestamp: "2026-05-15T10:20:00",
-      },
-      {
-        id: 5,
-        step: "Shoot Wrapped",
-        status: "completed",
-        timestamp: "2026-05-15T17:30:00",
-      },
-    ],
-  },
+      { id: 1, step: "Assigned to Shoot", status: "completed", timestamp: "2026-05-15T08:00:00" },
+      { id: 2, step: "Out for Shoot", status: "completed", timestamp: "2026-05-15T09:15:00" },
+      { id: 3, step: "Arrived at Location", status: "completed", timestamp: "2026-05-15T10:05:00" },
+      { id: 4, step: "Setup Complete", status: "completed", timestamp: "2026-05-15T10:20:00" },
+      { id: 5, step: "Shoot Wrapped", status: "completed", timestamp: "2026-05-15T17:30:00" }
+    ]
+  }
 ];
 
-const calculateTravelFee = (distance: number) => {
-  const billableDistance = Math.max(
-    0,
-    distance - travelSettings.freeAllowanceMiles,
-  );
-  return billableDistance * travelSettings.ratePerMile;
-};
-
-const getTotalTravelFees = () => {
-  return crewTravelData.reduce(
-    (total, crew) => total + calculateTravelFee(crew.distance),
-    0,
-  );
-};
-
-// Invoice data
-const totalTravelFees = getTotalTravelFees();
-const totalBillableMiles = crewTravelData.reduce((sum, crew) => {
-  return sum + Math.max(0, crew.distance - travelSettings.freeAllowanceMiles);
-}, 0);
+// Invoice data (static travel fee placeholder – actual fee computed live in component)
 const baseSubtotal = 8200;
+const staticTravelFee = 38.5; // (18+4
+
 
 const invoiceData = {
   invoiceNumber: "INV-2026-0542",
@@ -633,10 +553,10 @@ const invoiceData = {
       amount: 1500,
     },
     {
-      description: `Travel & Driving Charges (${totalBillableMiles} billable miles @ $${travelSettings.ratePerMile}/mile)`,
+      description: `Travel & Driving Charges (${100} billable miles @ $${travelSettings.ratePerMile}/mile)`,
       quantity: 1,
-      rate: totalTravelFees,
-      amount: totalTravelFees,
+      rate: 100,
+      amount: 100,
     },
     {
       description: "Additional Coverage Hours",
@@ -645,13 +565,13 @@ const invoiceData = {
       amount: 600,
     },
   ],
-  subtotal: baseSubtotal + totalTravelFees,
-  tax: Math.round((baseSubtotal + totalTravelFees) * 0.1),
+  subtotal: baseSubtotal + 100,
+  tax: Math.round((baseSubtotal + 100) * 0.1),
   discount: 500,
   total:
     baseSubtotal +
-    totalTravelFees +
-    Math.round((baseSubtotal + totalTravelFees) * 0.1) -
+    100 +
+    Math.round((baseSubtotal + 100) * 0.1) -
     500,
   paymentStatus: "Partially Paid" as const,
   paymentMethod: "Bank Transfer",
@@ -673,6 +593,13 @@ const ProjectDetailCardShimmer = ({ className = "" }: { className?: string }) =>
 );
 
 export default function ProjectDetail() {
+  const [travelLocations, setTravelLocations] = useState(INITIAL_TRAVEL_LOCATIONS);
+  const [editingTravelRow, setEditingTravelRow] = useState<number | null>(null);
+  const [travelRowDraft, setTravelRowDraft] = useState<{ venue: string; distance: string }>({ venue: "", distance: "" });
+  const [editingTravelSetting, setEditingTravelSetting] = useState<"freeAllowance" | "rate" | null>(null);
+
+
+
   const [activeTab, setActiveTab] = useState("overview");
   const [setFilter, setSetFilter] = useState("edited");
   const [assetFilter, setAssetFilter] = useState("all");
@@ -1353,6 +1280,11 @@ const handleUploadFiles =
 
           vendorshared
         );
+
+
+        fetchAssets(
+          selectedFilter
+        )
       } catch (error) {
         setUploadProgress(
           (prev) => ({
@@ -1736,10 +1668,10 @@ const fetchMoodboardAssets =
       amount: 1500,
     },
     {
-      description: `Travel & Driving Charges (${totalBillableMiles} billable miles @ $${travelSettings.ratePerMile}/mile)`,
+      description: `Travel & Driving Charges (${100} billable miles @ $${travelSettings.ratePerMile}/mile)`,
       quantity: 1,
-      rate: totalTravelFees,
-      amount: totalTravelFees,
+      rate: 100,
+      amount: 100,
     },
     {
       description: "Additional Coverage Hours",
@@ -1748,13 +1680,13 @@ const fetchMoodboardAssets =
       amount: 600,
     },
   ],
-  subtotal: baseSubtotal + totalTravelFees,
-  tax: Math.round((baseSubtotal + totalTravelFees) * 0.1),
+  subtotal: baseSubtotal + 100,
+  tax: Math.round((baseSubtotal + 100) * 0.1),
   discount: 500,
   total:
     baseSubtotal +
-    totalTravelFees +
-    Math.round((baseSubtotal + totalTravelFees) * 0.1) -
+    100 +
+    Math.round((baseSubtotal + 100) * 0.1) -
     500,
   paymentStatus: "Partially Paid" as const,
   paymentMethod: "Bank Transfer",
@@ -1807,41 +1739,83 @@ const [showPaymentStatusMenu, setShowPaymentStatusMenu] = useState(false);
   const [invoiceRowDraft, setInvoiceRowDraft] = useState<{ id:number; item_name: string; quantity: number; rate: number } | null>(null);
 
 
+  const [editingInvoiceId,setEditingInvoiceId] = useState(null)
+
   const [newRowDraft, setNewRowDraft] = useState({item_name: "", quantity: 1, rate: 0 });
 
 
-  function startEditInvoiceRow(idx: number) {
+  function startEditInvoiceRow(idx,invoice_item_id) {
     const item = invoiceItems[idx];
-    console.log(item)
+    setEditingInvoiceId(invoice_item_id)
     setInvoiceRowDraft({ id:item.invoice_item_id,item_name: item.item_name, quantity: item.quantity, rate: item.rate,invoice_id:item.invoice_id });
     setEditingInvoiceRow(idx);
   }
 
-  function saveInvoiceRow(idx: number) {
+  async function saveInvoiceRow(idx: number) {
     if (!invoiceRowDraft) return;
-    setInvoiceItems(prev => prev.map((item, i) => i === idx
-      ? { ...item, item_name: invoiceRowDraft.item_name, quantity: invoiceRowDraft.quantity, rate: invoiceRowDraft.rate, amount: invoiceRowDraft.quantity * invoiceRowDraft.rate,invoice_item_id:invoiceRowDraft.id,invoice_id:invoiceRowDraft.invoice_id }
-      : item
-    ));
-    setEditingInvoiceRow(null);
+   
+    const updateInvoiceItem = {
+  item_name: invoiceRowDraft.item_name, quantity: invoiceRowDraft.quantity, rate: invoiceRowDraft.rate, amount: invoiceRowDraft.quantity * invoiceRowDraft.rate,invoice_item_id:invoiceRowDraft.id,invoice_id:invoiceRowDraft.invoice_id 
+
+    }
+
+      setEditingInvoiceRow(null);
     setInvoiceRowDraft(null);
+    setEditingInvoiceId(null)
+    
+     try {
+      const response =
+        await updateInvoiceItems(
+          updateInvoiceItem
+        );
+
+      
+
+      toast.success(
+        response.message
+      );
+
+      // Refresh invoice data
+      await fetchInvoices();
+    } catch (error) {
+      toast.error(
+        error.response?.data
+          ?.message ||
+          "Failed to update invoice."
+      );
+    }
+  
   }
 
-   function deleteInvoiceRow(idx: number) {
-    setInvoiceItems(prev => prev.filter((_, i) => i !== idx));
+  useEffect(()=>{
+    console.log(invoiceItems)
+  },[invoiceItems])
+
+   async function deleteInvoiceRow(idx,id) {
+const deletingItem = invoiceItems?.find((item)=>item.invoice_item_id === id)
+    
+    try {
+      const response =
+        await deleteInvoiceItems(deletingItem);
+
+      toast.success(
+        response.message
+      );
+
+      await fetchInvoices();
+    } catch (error) {
+      toast.error(
+        error.response?.data
+          ?.message ||
+          "Failed to delete invoice item."
+      );
+    }
+  
     if (editingInvoiceRow === idx) { setEditingInvoiceRow(null); setInvoiceRowDraft(null); }
   }
 
   const commitNewRow=async()=> {
     if (!newRowDraft.item_name.trim()) return;
-    // setInvoiceItems(prev => [...prev, {
-    //   id: Date.now(),
-    //   description: newRowDraft.description,
-    //   quantity: newRowDraft.quantity,
-    //   rate: newRowDraft.rate,
-    //   amount: newRowDraft.quantity * newRowDraft.rate,
-    // }]);
-
     setAddingInvoiceRow(false)
 
 
@@ -1885,6 +1859,7 @@ const [showPaymentStatusMenu, setShowPaymentStatusMenu] = useState(false);
   function cancelEditInvoiceRow() {
     setEditingInvoiceRow(null);
     setInvoiceRowDraft(null);
+    setEditingInvoiceId(null)
   }
 
 
@@ -3859,165 +3834,323 @@ useEffect(() => {
                 transition={{ duration: 0.3 }}
                 className="space-y-6"
               >
-                {/* Travel Summary Card */}
-                <div className="bg-gradient-to-br from-[#2d5f4f]/20 via-white/[0.03] to-transparent border border-[#2d5f4f]/25 rounded-2xl p-6 shadow-[0_18px_60px_rgba(0,0,0,0.18)]">
-                  <div className="flex items-start justify-between mb-6">
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-xl bg-accent/20 flex items-center justify-center">
-                        <MapPin className="w-6 h-6 text-accent" />
-                      </div>
-                      <div>
-                        <h3 className="text-xl mb-1">Travel Overview</h3>
-                        <p className="text-sm opacity-60">
-                          Event location and crew logistics
-                        </p>
-                      </div>
-                    </div>
-                    {userRole === "editor" && (
-                      <button className="flex items-center gap-2 px-4 py-2 border border-white/10 rounded-full text-sm hover:bg-white/5 transition-all">
-                        <Settings className="w-4 h-4" />
-                        <span>Configure</span>
-                      </button>
-                    )}
-                  </div>
+                {(() => {
+                  const totalMiles = travelLocations.reduce((s, l) => s + l.distance, 0);
+                  const billableMiles = Math.max(0, totalMiles - travelConfig.freeAllowanceMiles);
+                  const travelFee = parseFloat((billableMiles * travelConfig.ratePerMile).toFixed(2));
 
-                  {travelDataLoading ? (
-                    <div className="space-y-6">
-                      <div className="grid md:grid-cols-2 gap-6 mb-6">
-                        <div className="space-y-3">
-                          <ProjectDetailShimmer className="h-4 w-16" />
-                          <ProjectDetailShimmer className="h-5 w-56" />
-                          <ProjectDetailShimmer className="h-4 w-12 mt-4" />
-                          <ProjectDetailShimmer className="h-5 w-64" />
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                          {[0, 1, 2, 3].map((travelStatSkeleton) => (
-                            <ProjectDetailCardShimmer key={travelStatSkeleton} className="h-24" />
-                          ))}
-                        </div>
-                      </div>
-                      <ProjectDetailCardShimmer className="h-28 w-full" />
-                    </div>
-                  ) : (
+                  return (
                     <>
-                  <div className="grid md:grid-cols-2 gap-6 mb-6">
-                    <div className="space-y-3">
-                      <div>
-                        <p className="text-xs opacity-60 mb-1">FROM</p>
-                        <p className="text-base">
-                          {travelConfig.studioLocation}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-xs opacity-60 mb-1">TO</p>
-                        <p className="text-base flex items-center gap-2">
-                          <Navigation className="w-4 h-4 text-accent" />
-                          {travelConfig.shootLocation}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="p-4 bg-white/5 rounded-xl border border-white/10">
-                        <p className="text-xs opacity-60 mb-1">
-                          Total Distance
-                        </p>
-                        <p className="text-2xl">
-                          {travelData?.total_distance} mi
-                        </p>
-                      </div>
-                      <div className="p-4 bg-white/5 rounded-xl border border-white/10">
-                        <p className="text-xs opacity-60 mb-1">
-                          Crew Traveling
-                        </p>
-                        <p className="text-2xl">{crewTravelData.length}</p>
-                      </div>
-                      <div className="p-4 bg-white/5 rounded-xl border border-white/10">
-                        <p className="text-xs opacity-60 mb-1">
-                          Free Allowance
-                        </p>
-                        <p className="text-base">
-                          {travelConfig.freeAllowanceMiles} miles
-                        </p>
-                      </div>
-                      <div className="p-4 bg-accent/10 border border-accent/30 rounded-xl">
-                        <p className="text-xs opacity-60 mb-1">Travel Fee</p>
-                        <p className="text-2xl text-accent">
-                          ${travelData?.total_travel_fee}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  
-                    <div className="p-4 bg-white/5 rounded-xl border border-white/10">
-                      <p className="text-xs opacity-60 mb-2">
-                        BILLING BREAKDOWN
-                      </p>
-                      <div className="space-y-1 text-sm">
-                        <div className="flex justify-between">
-                          <span className="opacity-70">Total Distance</span>
-                          <span>{travelData?.total_distance} miles</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="opacity-70">Free Allowance</span>
-                          <span>-20 miles</span>
-                        </div>
-                        <div className="flex justify-between border-t border-white/10 pt-1 mt-1">
-                          <span>Billable Distance</span>
-                          <span>
-                            {Math.max(
-                              0,
-                              travelData?.total_distance -
-                                20,
-                            )}{" "}
-                            miles × ${travelConfig.ratePerMile}/mile
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                    </>
-                  )}
-                  
-                </div>
-
-                {/* Crew Member Selector */}
-                <div>
-                  <h3 className="text-lg mb-4 opacity-80">Crew Members</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    {travelDataLoading ? (
-                      [0, 1, 2].map((travelCrewSkeleton) => (
-                        <ProjectDetailCardShimmer key={travelCrewSkeleton} className="h-20" />
-                      ))
-                    ) : travelData?.team_members?.map((crew,i) => (
-                      <button
-                        key={i}
-                       
-                        className={`p-4 rounded-xl border transition-all text-left bg-accent/10 border-accent/30`}
-                      >
+                      {/* Header strip */}
+                      <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                          <div
-                            className={`w-10 h-10 rounded-full ${getRoleColor(crew.color)} flex items-center justify-center text-sm`}
-                          >
-                            {`${crew.member_name?.split(" ")[0]?.[0] || ""}${
-crew.member_name?.split(" ").slice(-1)[0]?.[0] || ""
-}`.toUpperCase()}
+                          <div className="w-10 h-10 rounded-xl bg-accent/15 flex items-center justify-center">
+                            <Car className="w-5 h-5 text-accent" />
                           </div>
-                          <div className="flex-1">
-                            <p className="text-sm mb-0.5">{crew.member_name}</p>
-                            <p className="text-xs opacity-50">{crew.step_name}</p>
+                          <div>
+                            <h3 className="text-lg leading-tight">Crew Travel</h3>
+                            <p className="text-xs opacity-40 mt-0.5">Locations & driving distances for this project</p>
                           </div>
                         </div>
-                        {/* <div className="flex items-center justify-between text-xs">
-                          <span className="opacity-60">Distance</span>
-                          <span className="flex items-center gap-1">
-                            <Car className="w-3 h-3" />
-                            {crew.distance} mi
-                          </span>
-                        </div> */}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+                        <div className="flex items-center gap-2 text-xs opacity-50">
+                          <MapPin className="w-3.5 h-3.5" />
+                          <span>From: {travelConfig.studioLocation}</span>
+                        </div>
+                      </div>
+
+                      {/* Location Distance Table */}
+                      <div className="border border-white/10 rounded-2xl overflow-hidden">
+                        {/* Table header */}
+                        <div className="grid grid-cols-[1fr_160px_120px_48px] gap-0 px-5 py-3 bg-white/[0.03] border-b border-white/10 text-xs uppercase tracking-widest opacity-40">
+                          <span>Venue / Location</span>
+                          <span>Shoot Step</span>
+                          <span className="text-right">Distance (mi)</span>
+                          <span />
+                        </div>
+
+                        {/* Rows */}
+                        {travelLocations.map((loc, idx) => {
+                          const isEditing = editingTravelRow === loc.id;
+                          return (
+                            <div
+                              key={loc.id}
+                              className={`group grid grid-cols-[1fr_160px_120px_48px] gap-0 px-5 py-0 border-b border-white/[0.06] last:border-b-0 transition-colors ${
+                                isEditing ? "bg-accent/5" : "hover:bg-white/[0.025]"
+                              }`}
+                            >
+                              {isEditing ? (
+                                <>
+                                  {/* Venue input */}
+                                  <div className="py-3 pr-3">
+                                    <input
+                                      autoFocus
+                                      value={travelRowDraft.venue}
+                                      onChange={(e) => setTravelRowDraft(d => ({ ...d, venue: e.target.value }))}
+                                      className="w-full bg-white/5 border border-accent/30 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-accent/60"
+                                    />
+                                  </div>
+                                  {/* Step label (read-only in edit mode) */}
+                                  <div className="py-3 pr-3 flex items-center">
+                                    <span className="text-sm opacity-50">{loc.step}</span>
+                                  </div>
+                                  {/* Distance input */}
+                                  <div className="py-3 flex items-center justify-end pr-3">
+                                    <div className="flex items-center gap-1.5">
+                                      <input
+                                        type="number"
+                                        min={0}
+                                        value={travelRowDraft.distance}
+                                        onChange={(e) => setTravelRowDraft(d => ({ ...d, distance: e.target.value }))}
+                                        className="w-20 bg-white/5 border border-accent/30 rounded-lg px-2 py-1.5 text-sm text-right focus:outline-none focus:border-accent/60"
+                                      />
+                                      <span className="text-xs opacity-40">mi</span>
+                                    </div>
+                                  </div>
+                                  {/* Save/cancel */}
+                                  <div className="py-3 flex items-center justify-center gap-1">
+                                    <button
+                                      onClick={() => {
+                                        const dist = parseFloat(travelRowDraft.distance);
+                                        if (!isNaN(dist) && travelRowDraft.venue.trim()) {
+                                          setTravelLocations(prev => prev.map(l => l.id === loc.id ? { ...l, venue: travelRowDraft.venue.trim(), distance: Math.max(0, dist) } : l));
+                                        }
+                                        setEditingTravelRow(null);
+                                      }}
+                                      className="w-7 h-7 flex items-center justify-center rounded-lg bg-accent/20 hover:bg-accent/30 text-accent transition-colors"
+                                      title="Save"
+                                    >
+                                      <Check className="w-3.5 h-3.5" />
+                                    </button>
+                                    <button
+                                      onClick={() => setEditingTravelRow(null)}
+                                      className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/10 opacity-50 hover:opacity-80 transition-all"
+                                      title="Cancel"
+                                    >
+                                      <X className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                </>
+                              ) : (
+                                <>
+                                  {/* Venue */}
+                                  <div className="py-4 pr-3 flex items-center gap-2.5">
+                                    <div className="w-7 h-7 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center flex-shrink-0">
+                                      <MapPin className="w-3.5 h-3.5 opacity-40" />
+                                    </div>
+                                    <span className="text-sm">{loc.venue}</span>
+                                  </div>
+                                  {/* Step */}
+                                  <div className="py-4 pr-3 flex items-center">
+                                    <span className="text-xs px-2 py-1 rounded-full bg-white/5 border border-white/10 opacity-60">{loc.step}</span>
+                                  </div>
+                                  {/* Distance */}
+                                  <div className="py-4 pr-3 flex items-center justify-end">
+                                    <span className="text-sm tabular-nums">{loc.distance} <span className="opacity-40">mi</span></span>
+                                  </div>
+                                  {/* Edit button (on hover) */}
+                                  <div className="py-4 flex items-center justify-center">
+                                    
+                                      <button
+                                        onClick={() => {
+                                          setEditingTravelRow(loc.id);
+                                          setTravelRowDraft({ venue: loc.venue, distance: String(loc.distance) });
+                                        }}
+                                        className="w-7 h-7 flex items-center justify-center rounded-lg opacity-0 group-hover:opacity-60 hover:!opacity-100 hover:bg-white/10 transition-all"
+                                        title="Edit"
+                                      >
+                                        <Pencil className="w-3.5 h-3.5" />
+                                      </button>
+                                  
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                          );
+                        })}
+
+                        {/* Total row */}
+                        <div className="grid grid-cols-[1fr_160px_120px_48px] gap-0 px-5 py-3.5 bg-white/[0.03] border-t border-white/10">
+                          <div className="col-span-2 flex items-center gap-2 text-xs opacity-50 uppercase tracking-widest">
+                            <span>Total Distance</span>
+                            <span className="opacity-40">·</span>
+                            <span>{travelLocations.length} venue{travelLocations.length !== 1 ? "s" : ""}</span>
+                          </div>
+                          <div className="flex items-center justify-end pr-3">
+                            <span className="text-base tabular-nums">{totalMiles} <span className="text-xs opacity-40">mi</span></span>
+                          </div>
+                          <div />
+                        </div>
+                      </div>
+
+                      {/* Settings row */}
+                      <div className="grid md:grid-cols-2 gap-4">
+                        {/* Free Allowance */}
+                        <div className="group relative border border-white/10 rounded-xl p-4 hover:border-white/20 transition-colors bg-white/[0.02]">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <p className="text-xs uppercase tracking-widest opacity-40 mb-1">Free Allowance</p>
+                              {editingTravelSetting === "freeAllowance" ? (
+                                <div className="flex items-center gap-2 mt-1">
+                                  <input
+                                    autoFocus
+                                    type="number"
+                                    min={0}
+                                    defaultValue={travelConfig.freeAllowanceMiles}
+                                    onBlur={(e) => {
+                                      const v = parseFloat(e.target.value);
+                                      if (!isNaN(v)) setTravelConfig(c => ({ ...c, freeAllowanceMiles: Math.max(0, v) }));
+                                      setEditingTravelSetting(null);
+                                    }}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                                      if (e.key === "Escape") setEditingTravelSetting(null);
+                                    }}
+                                    className="w-24 bg-white/5 border border-accent/30 rounded-lg px-2 py-1 text-base focus:outline-none focus:border-accent/60"
+                                  />
+                                  <span className="text-sm opacity-50">miles</span>
+                                </div>
+                              ) : (
+                                <p className="text-xl mt-0.5 tabular-nums">{travelConfig.freeAllowanceMiles} <span className="text-sm opacity-40">miles</span></p>
+                              )}
+                              <p className="text-xs opacity-30 mt-1.5">No charge up to this distance</p>
+                            </div>
+                            {editingTravelSetting !== "freeAllowance" && (
+                              <button
+                                onClick={() => setEditingTravelSetting("freeAllowance")}
+                                className="opacity-0 group-hover:opacity-50 hover:!opacity-100 w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/10 transition-all"
+                              >
+                                <Pencil className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Rate per mile */}
+                        <div className="group relative border border-white/10 rounded-xl p-4 hover:border-white/20 transition-colors bg-white/[0.02]">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <p className="text-xs uppercase tracking-widest opacity-40 mb-1">Rate per Mile</p>
+                              {editingTravelSetting === "rate" ? (
+                                <div className="flex items-center gap-2 mt-1">
+                                  <span className="text-sm opacity-50">$</span>
+                                  <input
+                                    autoFocus
+                                    type="number"
+                                    min={0}
+                                    step={0.01}
+                                    defaultValue={travelConfig.ratePerMile}
+                                    onBlur={(e) => {
+                                      const v = parseFloat(e.target.value);
+                                      if (!isNaN(v)) setTravelConfig(c => ({ ...c, ratePerMile: Math.max(0, parseFloat(v.toFixed(2))) }));
+                                      setEditingTravelSetting(null);
+                                    }}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                                      if (e.key === "Escape") setEditingTravelSetting(null);
+                                    }}
+                                    className="w-24 bg-white/5 border border-accent/30 rounded-lg px-2 py-1 text-base focus:outline-none focus:border-accent/60"
+                                  />
+                                  <span className="text-sm opacity-50">/ mile</span>
+                                </div>
+                              ) : (
+                                <p className="text-xl mt-0.5 tabular-nums">${travelConfig.ratePerMile.toFixed(2)} <span className="text-sm opacity-40">/ mile</span></p>
+                              )}
+                              <p className="text-xs opacity-30 mt-1.5">Applied to billable miles</p>
+                            </div>
+                            {editingTravelSetting !== "rate" && (
+                              <button
+                                onClick={() => setEditingTravelSetting("rate")}
+                                className="opacity-0 group-hover:opacity-50 hover:!opacity-100 w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/10 transition-all"
+                              >
+                                <Pencil className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Travel Fee Invoice Summary */}
+                      <div className="border border-accent/20 rounded-2xl overflow-hidden bg-gradient-to-br from-accent/[0.06] to-transparent">
+                        <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between">
+                          <div className="flex items-center gap-2.5">
+                            <Receipt className="w-4 h-4 text-accent opacity-70" />
+                            <span className="text-sm opacity-70 uppercase tracking-widest">Travel Fee Summary</span>
+                          </div>
+                          <span className="text-xs opacity-30">Auto-calculated</span>
+                        </div>
+
+                        <div className="px-6 py-5 space-y-0">
+                          {/* Total miles */}
+                          <div className="flex items-center justify-between py-3 border-b border-white/[0.06]">
+                            <div className="flex items-center gap-3">
+                              <div className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center">
+                                <Route className="w-3.5 h-3.5 opacity-50" />
+                              </div>
+                              <span className="text-sm opacity-70">Total miles ({travelLocations.length} venues)</span>
+                            </div>
+                            <span className="text-sm tabular-nums">{totalMiles} mi</span>
+                          </div>
+
+                          {/* Free allowance deduction */}
+                          <div className="flex items-center justify-between py-3 border-b border-white/[0.06]">
+                            <div className="flex items-center gap-3">
+                              <div className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center">
+                                <Minus className="w-3.5 h-3.5 opacity-50" />
+                              </div>
+                              <span className="text-sm opacity-70">Free allowance</span>
+                            </div>
+                            <span className="text-sm tabular-nums text-white/50">− {travelConfig.freeAllowanceMiles} mi</span>
+                          </div>
+
+                          {/* Billable miles */}
+                          <div className="flex items-center justify-between py-3 border-b border-white/[0.06]">
+                            <div className="flex items-center gap-3">
+                              <div className="w-7 h-7 rounded-lg bg-accent/10 border border-accent/20 flex items-center justify-center">
+                                <Car className="w-3.5 h-3.5 text-accent/70" />
+                              </div>
+                              <span className="text-sm">Billable miles</span>
+                            </div>
+                            <span className="text-sm tabular-nums font-medium">{billableMiles} mi</span>
+                          </div>
+
+                          {/* Rate */}
+                          <div className="flex items-center justify-between py-3 border-b border-white/[0.06]">
+                            <div className="flex items-center gap-3">
+                              <div className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center">
+                                <span className="text-xs opacity-50">×</span>
+                              </div>
+                              <span className="text-sm opacity-70">Rate per mile</span>
+                            </div>
+                            <span className="text-sm tabular-nums">${travelConfig.ratePerMile.toFixed(2)} / mi</span>
+                          </div>
+
+                          {/* Final fee */}
+                          <div className="flex items-center justify-between pt-5 pb-1">
+                            <div className="flex items-center gap-3">
+                              <div className="w-7 h-7 rounded-lg bg-accent/20 border border-accent/30 flex items-center justify-center">
+                                <DollarSign className="w-3.5 h-3.5 text-accent" />
+                              </div>
+                              <span className="text-base">Total Travel Fee</span>
+                            </div>
+                            <div className="text-right">
+                              <span className="text-2xl text-accent tabular-nums">${travelFee.toFixed(2)}</span>
+                              {billableMiles === 0 && (
+                                <p className="text-xs opacity-40 mt-0.5">Within free allowance</p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Formula footer */}
+                        <div className="px-6 py-3 border-t border-white/10 bg-white/[0.02]">
+                          <p className="text-xs opacity-30 font-mono">
+                            ({totalMiles} mi − {travelConfig.freeAllowanceMiles} mi) × ${travelConfig.ratePerMile.toFixed(2)}/mi = <span className="text-accent/60">${travelFee.toFixed(2)}</span>
+                          </p>
+                        </div>
+                      </div>
+                    </>
+                  );
+                })()}
 
                 {/* Selected Crew Travel Timeline */}
                <div className="bg-white/[0.055] border border-white/10 rounded-2xl p-6 shadow-[0_18px_60px_rgba(0,0,0,0.18)]">
@@ -4191,18 +4324,19 @@ crew.member_name?.split(" ").slice(-1)[0]?.[0] || ""
                       </div>
                       <div className="text-right">
                         <p className="text-sm opacity-60 mb-1">INVOICE</p>
-                        {/* <p className="text-xl">{invoiceData.invoiceNumber}</p> */}
+                        <p className="text-xl">{invoice?.invoice?.invoice_number}</p>
                       </div>
                     </div>
 
                     <div className="grid md:grid-cols-3 gap-6">
                       <div>
                         <p className="text-xs opacity-60 mb-1">Issue Date</p>
-                        <p>{format(new Date(invoiceData.issueDate), "MMM dd, yyyy")}</p>
+                        <p>{invoice?.invoice?.created_at &&format(new Date(invoice?.invoice?.created_at), "MMM dd, yyyy")}</p>
                       </div>
                       <div>
                         <p className="text-xs opacity-60 mb-1">Due Date</p>
-                        <p>{format(new Date(invoiceData.dueDate), "MMM dd, yyyy")}</p>
+                        <p>{invoice?.invoice?.issue_date &&format(new Date(invoice?.invoice?.issue_date), "MMM dd, yyyy")}</p>
+
                       </div>
                       {/* <div>
                         <p className="text-xs opacity-60 mb-1">Payment Status</p>
@@ -4309,14 +4443,22 @@ crew.member_name?.split(" ").slice(-1)[0]?.[0] || ""
                                 {
                                 // userRole === "editor" &&
                                  (
-                                  <td className="py-4 pl-3">
+                                  <td className="py-4 pl-3 flex gap-1">
                                     <button
-                                      onClick={() => startEditInvoiceRow(index)}
+                                      onClick={() => startEditInvoiceRow(index,item.invoice_item_id)}
                                       className="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 hover:border-accent/30 flex items-center justify-center transition-all group"
                                       title="Edit row"
                                     >
                                       <PenLine className="w-3.5 h-3.5 opacity-40 group-hover:opacity-100 group-hover:text-accent transition-all" />
                                     </button>
+
+                                    <button
+                                        onClick={() => deleteInvoiceRow(index,item.invoice_item_id)}
+                                        className="w-7 h-7 rounded-lg bg-white/5 hover:bg-red-500/15 border border-white/8 hover:border-red-500/25 flex items-center justify-center transition-all"
+                                        title="Delete"
+                                      >
+                                        <Trash2 className="w-3 h-3 opacity-50 hover:opacity-100 hover:text-red-400 transition-all" />
+                                      </button>
                                   </td>
                                 )}
                               </>
@@ -4394,21 +4536,21 @@ crew.member_name?.split(" ").slice(-1)[0]?.[0] || ""
                     <div className="w-full md:w-80 space-y-3">
                       <div className="flex justify-between text-sm">
                         <span className="opacity-60">Subtotal</span>
-                        <span>${invoice?.subtotal_amount}</span>
+                        <span>${invoice?.invoice?.subtotal_amount}</span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span className="opacity-60">Tax (10%)</span>
-                        <span>${invoice?.tax_amount}</span>
+                        <span>${invoice?.invoice?.tax_amount}</span>
                       </div>
                       {invoice?.discount_amount > 0 && (
                         <div className="flex justify-between text-sm text-accent">
                           <span>Discount</span>
-                          <span>-${invoice?.discount_amount?.toLocaleString()}</span>
+                          <span>-${invoice?.invoice?.discount_amount?.toLocaleString()}</span>
                         </div>
                       )}
                       <div className="border-t border-white/10 pt-3 flex justify-between text-xl">
                         <span>Total</span>
-                        <span className="text-accent">${invoice?.final_amount?.toLocaleString()}</span>
+                        <span className="text-accent">${invoice?.invoice?.final_amount?.toLocaleString()}</span>
                       </div>
                       {/* {invoiceData.paymentStatus === "Partially Paid" && (
                         <>
@@ -4429,7 +4571,7 @@ crew.member_name?.split(" ").slice(-1)[0]?.[0] || ""
                   <div className="border-t border-white/10 pt-6 space-y-4">
                     <div>
                       <p className="text-xs opacity-60 mb-1">PAYMENT METHOD</p>
-                      <p className="text-sm">{invoice?.payment_method}</p>
+                      <p className="text-sm">{invoice?.invoice?.payment_method}</p>
                     </div>
                     <div>
                       <p className="text-xs opacity-60 mb-2">NOTES</p>

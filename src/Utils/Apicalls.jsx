@@ -874,3 +874,27 @@ export const clientLogin =
 
   return response.data;
 };
+
+
+export const updateInvoiceItems = async (
+  invoiceItem
+) => {
+  const response =
+    await api.post(
+      "/project/updateInvoiceItem",
+      invoiceItem
+    );
+
+  return response.data;
+};
+export const deleteInvoiceItems = async (
+  invoiceItem
+) => {
+  const response =
+    await api.post(
+      "/project/deleteInvoiceItem",
+      invoiceItem
+    );
+
+  return response.data;
+};

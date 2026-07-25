@@ -23,6 +23,7 @@ import {
   Mail,
   Phone,
   Search,
+  Clock,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router";
 import { adressautocomplete, createClient, getTeamMembers, getWorkflowSteps, getWorkflowTemplates } from "../../Utils/Apicalls";
@@ -398,17 +399,21 @@ const [teamAssignments, setTeamAssignments] = useState([]);
 const [teamMembers, setTeamMembers] = useState([]);
 
 
+
 useEffect(() => {
   if (workflowSteps?.length) {
     setTeamAssignments(
-      workflowSteps?.map((step) => ({
-        workflow_step_id: step.workflow_step_id,
+      workflowSteps.map((step) => ({
+        workflow_step_id:
+          step.workflow_step_id,
         assigned_member_ids: [],
+        date: "",
+        time: "",
+        venue: "",
       }))
     );
   }
 }, [workflowSteps]);
-  
 
 
 
@@ -535,6 +540,25 @@ const handleAssignTeamMember = (
 };
 
 
+const handleUpdateStepSchedule = (
+  workflow_step_id,
+  field,
+  value
+) => {
+  setTeamAssignments((prev) =>
+    prev.map((item) =>
+      item.workflow_step_id ===
+      workflow_step_id
+        ? {
+            ...item,
+            [field]: value,
+          }
+        : item
+    )
+  );
+};
+
+
 
 
   // Unique assigned members across all steps (for review)
@@ -633,6 +657,10 @@ const allAssignedMembers = teamMembers.filter((member) =>
 
   return assignment?.assigned_member_ids?.length > 0;
 });
+
+useEffect(()=>{
+  console.log(teamAssignments)
+},[teamAssignments])
   return (
     <div className="relative bg-background text-foreground min-h-screen">
       {/* Navigation */}
@@ -995,7 +1023,7 @@ const allAssignedMembers = teamMembers.filter((member) =>
   
   
                   const hasAssignees = assignment?.assigned_member_ids?.length > 0;
-                 
+          
                   return (
                     <motion.div
                       key={step.id}
@@ -1029,6 +1057,56 @@ const allAssignedMembers = teamMembers.filter((member) =>
                             onToggle={(memberId) => handleAssignTeamMember(step.workflow_step_id, memberId)}
                             // onAddMember={handleAddMember}
                           />
+
+                           <div className="mt-3 grid grid-cols-2 gap-2">
+                            <div className="relative">
+                              <Calendar size={11} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-white/20 pointer-events-none" />
+                              <input
+                                type="date"
+                               value={assignment?.date || ""}
+                               onChange={(e) =>
+    handleUpdateStepSchedule(
+      step.workflow_step_id,
+      "date",
+      e.target.value
+    )
+  }
+                                className="w-full bg-white/[0.04] border border-white/8 rounded-lg pl-7 pr-2 py-1.5 text-xs text-white/70 placeholder-white/20 outline-none focus:border-accent/40 focus:bg-white/[0.06] transition-all [color-scheme:dark]"
+                              />
+                            </div>
+                            <div className="relative">
+                              <Clock size={11} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-white/20 pointer-events-none" />
+                              <input
+                                type="time"
+                                 value={assignment?.time || ""}
+  onChange={(e) =>
+    handleUpdateStepSchedule(
+      step.workflow_step_id,
+      "time",
+      e.target.value
+    )
+  }
+                                className="w-full bg-white/[0.04] border border-white/8 rounded-lg pl-7 pr-2 py-1.5 text-xs text-white/70 placeholder-white/20 outline-none focus:border-accent/40 focus:bg-white/[0.06] transition-all [color-scheme:dark]"
+                              />
+                            </div>
+                            
+                            <div className="relative">
+                              <Briefcase size={11} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-white/20 pointer-events-none" />
+                              <input
+                                type="text"
+                                value={assignment?.venue || ""}
+  onChange={(e) =>
+    handleUpdateStepSchedule(
+      step.workflow_step_id,
+      "venue",
+      e.target.value
+    )
+  }
+                                placeholder="Venue name"
+                                className="w-full bg-white/[0.04] border border-white/8 rounded-lg pl-7 pr-2 py-1.5 text-xs text-white/70 placeholder-white/20 outline-none focus:border-accent/40 focus:bg-white/[0.06] transition-all"
+                              />
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </motion.div>
