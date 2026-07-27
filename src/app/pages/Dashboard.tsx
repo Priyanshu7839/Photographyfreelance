@@ -154,40 +154,6 @@ const [loading, setLoading] =
             />
           </div>
 
-          {/* Filters */}
-          {/* <div className="flex flex-wrap gap-3">
-            <div className="flex gap-2">
-              {["all", "pending", "in-progress", "completed"].map((status) => (
-                <button
-                  key={status}
-                  onClick={() => setStatusFilter(status)}
-                  className={`px-5 py-2 rounded-full text-sm transition-all capitalize ${
-                    statusFilter === status
-                      ? "bg-accent text-background"
-                      : "bg-white/5 border border-white/10 hover:bg-white/10"
-                  }`}
-                >
-                  {status === "in-progress" ? "In Progress" : status}
-                </button>
-              ))}
-            </div>
-            <div className="w-px h-8 bg-white/10 hidden md:block" />
-            <div className="flex gap-2">
-              {["all", "wedding", "pre-wedding"].map((type) => (
-                <button
-                  key={type}
-                  onClick={() => setEventTypeFilter(type)}
-                  className={`px-5 py-2 rounded-full text-sm transition-all capitalize ${
-                    eventTypeFilter === type
-                      ? "bg-white/10 border border-white/20"
-                      : "bg-white/5 border border-white/10 hover:bg-white/10"
-                  }`}
-                >
-                  {type}
-                </button>
-              ))}
-            </div>
-          </div> */}
         </motion.div>
 }
         {/* Projects Grid */}
@@ -225,7 +191,7 @@ const [loading, setLoading] =
                     {project.client_name}
                   </h3>
                   <p className="text-sm opacity-70 capitalize">
-                    {project.event_type} · {format(new Date(project.event_date), "MMM dd")}
+                    {project.event_type} 
                   </p>
                 </div>
 
@@ -277,7 +243,7 @@ const [loading, setLoading] =
                       {project.client_name}
                     </h3>
                     <p className="text-sm opacity-70 mb-4 capitalize">
-                      {project.event_type} · {format(new Date(project.event_date), "MMM dd")}
+                      {project.event_type} 
                     </p>
 
                     {/* View Project Button */}

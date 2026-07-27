@@ -898,3 +898,72 @@ export const deleteInvoiceItems = async (
 
   return response.data;
 };
+
+
+
+export const getProjectStepsForTravel =
+  async (clientId) => {
+    const { data } =
+      await api.get(
+        `project/travel/projectSteps/${clientId}`
+      );
+
+    return data;
+  };
+
+
+  export const updateProjectStepTravel =
+  async (
+    clientId,
+    projectStepId,
+    body
+  ) => {
+    const { data } =
+      await api.put(
+        `project/travel/${clientId}/${projectStepId}`,
+        body
+      );
+
+    return data;
+  };
+
+
+  export const createMember = async ( {
+  name,
+  role,
+  email,
+  phone,
+  password
+}) => {
+  const response = await api.post(
+    "/client/addmembers",
+    {name,
+  role,
+  email,
+  phone,
+  password}
+  );
+
+  return response.data;
+};
+
+
+export const updateProjectStep = async ({
+  project_step_id,
+  step_name,
+  assigned_member_ids,
+  venue,
+  scheduled_time,
+}) => {
+  const response = await api.post(
+    `/project/project-steps/${project_step_id}`,
+    {
+      step_name,
+      assigned_member_ids,
+      venue,
+      scheduled_time,
+    }
+  );
+
+  return response.data;
+};

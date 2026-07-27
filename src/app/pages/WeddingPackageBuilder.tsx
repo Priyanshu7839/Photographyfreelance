@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, type ElementType } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Camera,
@@ -46,7 +46,7 @@ interface ServiceType {
   id: string;
   label: string;
   subtitle: string;
-  icon: React.ElementType;
+  icon: ElementType;
   packages: Package[];
   videoAddonNote?: string;
 }
@@ -219,7 +219,7 @@ interface AddOn {
   label: string;
   price: number;
   priceLabel: string;
-  icon: React.ElementType;
+  icon: ElementType;
 }
 
 const ADD_ONS: AddOn[] = [
@@ -580,11 +580,81 @@ function SummaryCard({
 interface BookingFormData {
   name: string;
   email: string;
+  countryCode: string;
   phone: string;
   location: string;
   date: string;
   notes: string;
 }
+
+interface FormErrors {
+  name?: string;
+  email?: string;
+  phone?: string;
+  location?: string;
+  date?: string;
+}
+
+// Country codes list
+const COUNTRY_CODES = [
+  { code: "+1", flag: "🇺🇸", label: "US" },
+  { code: "+1", flag: "🇨🇦", label: "CA" },
+  { code: "+44", flag: "🇬🇧", label: "GB" },
+  { code: "+91", flag: "🇮🇳", label: "IN" },
+  { code: "+61", flag: "🇦🇺", label: "AU" },
+  { code: "+971", flag: "🇦🇪", label: "AE" },
+  { code: "+65", flag: "🇸🇬", label: "SG" },
+  { code: "+60", flag: "🇲🇾", label: "MY" },
+  { code: "+49", flag: "🇩🇪", label: "DE" },
+  { code: "+33", flag: "🇫🇷", label: "FR" },
+  { code: "+39", flag: "🇮🇹", label: "IT" },
+  { code: "+34", flag: "🇪🇸", label: "ES" },
+  { code: "+81", flag: "🇯🇵", label: "JP" },
+  { code: "+82", flag: "🇰🇷", label: "KR" },
+  { code: "+55", flag: "🇧🇷", label: "BR" },
+  { code: "+52", flag: "🇲🇽", label: "MX" },
+  { code: "+27", flag: "🇿🇦", label: "ZA" },
+  { code: "+64", flag: "🇳🇿", label: "NZ" },
+  { code: "+31", flag: "🇳🇱", label: "NL" },
+  { code: "+46", flag: "🇸🇪", label: "SE" },
+];
+
+// Validation helpers
+const VALIDATORS = {
+  name: (v: string): string | undefined => {
+    if (!v.trim()) return "Full name is required";
+    if (v.trim().length < 2) return "Name must be at least 2 characters";
+    if (!/^[a-zA-Z\s'\-\.]+$/.test(v.trim())) return "Name can only contain letters, spaces, hyphens, and apostrophes";
+    if (!v.trim().includes(" ")) return "Please enter your full name (first and last)";
+    return undefined;
+  },
+  email: (v: string): string | undefined => {
+    if (!v.trim()) return "Email address is required";
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v.trim())) return "Enter a valid email address (e.g. you@example.com)";
+    return undefined;
+  },
+  phone: (v: string): string | undefined => {
+    if (!v.trim()) return "Phone number is required";
+    const digits = v.replace(/\D/g, "");
+    if (digits.length < 7) return "Phone number is too short";
+    if (digits.length > 15) return "Phone number is too long";
+    if (!/^[\d\s\-\(\)\.]+$/.test(v.trim())) return "Phone number can only contain digits, spaces, dashes, and parentheses";
+    return undefined;
+  },
+  location: (v: string): string | undefined => {
+    if (!v.trim()) return "Location or city is required";
+    if (v.trim().length < 2) return "Please enter a valid location";
+    if (!/^[a-zA-Z0-9\s,\.\-'&]+$/.test(v.trim())) return "Location contains invalid characters";
+    return undefined;
+  },
+  date: (v: string): string | undefined => {
+    if (!v) return undefined; // optional
+    const d = new Date(v);
+    if (isNaN(d.getTime())) return "Enter a valid date";
+    if (d < new Date()) return "Please choose a future date";
+    return undefined;
+  },
+};
 
 function BookingModal({
   serviceType,
@@ -601,14 +671,39 @@ function BookingModal({
 }) {
   const [step, setStep] = useState(1);
   const [submitted, setSubmitted] = useState(false);
+  const [showCountryPicker, setShowCountryPicker] = useState(false);
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const [submitAttempted, setSubmitAttempted] = useState(false);
+  const countryPickerRef = useRef<HTMLDivElement>(null);
+
   const [form, setForm] = useState<BookingFormData>({
     name: "",
     email: "",
+    countryCode: "+1",
     phone: "",
     location: "",
     date: "",
     notes: "",
   });
+
+  // Close country picker on outside click
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (countryPickerRef.current && !countryPickerRef.current.contains(e.target as Node)) {
+        setShowCountryPicker(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  const errors: FormErrors = {
+    name: VALIDATORS.name(form.name),
+    email: VALIDATORS.email(form.email),
+    phone: VALIDATORS.phone(form.phone),
+    location: VALIDATORS.location(form.location),
+    date: VALIDATORS.date(form.date),
+  };
 
   const selectedAddOns = addOns.map((id) => ADD_ONS.find((a) => a.id === id)!).filter(Boolean);
 
@@ -616,14 +711,38 @@ function BookingModal({
     setForm((prev) => ({ ...prev, [field]: value }));
   }
 
-  function canProceed() {
-    if (step === 1) return form.name.trim() && form.email.trim();
-    if (step === 2) return form.phone.trim() && form.location.trim();
-    return true;
+  function touch(field: string) {
+    setTouched((prev) => ({ ...prev, [field]: true }));
   }
 
-  const inputCls =
-    "w-full bg-white/[0.04] border border-white/12 rounded-xl px-4 py-3 text-sm text-white placeholder-white/25 outline-none focus:border-accent/60 focus:bg-white/[0.06] transition-all duration-200";
+  function showError(field: keyof FormErrors): string | undefined {
+    if (submitAttempted || touched[field]) return errors[field];
+    return undefined;
+  }
+
+  const step1Valid = !errors.name && !errors.email;
+  const step2Valid = !errors.phone && !errors.location && !errors.date;
+
+  function handleNext() {
+    setSubmitAttempted(true);
+    const currentValid = step === 1 ? step1Valid : step === 2 ? step2Valid : true;
+    if (!currentValid) return;
+    setSubmitAttempted(false);
+    setStep((s) => s + 1);
+  }
+
+  function handleSubmit() {
+    setSubmitAttempted(true);
+    setSubmitted(true);
+  }
+
+  const inputBase =
+    "w-full bg-white/[0.04] border rounded-xl px-4 py-3 text-sm text-white placeholder-white/25 outline-none transition-all duration-200";
+
+  function inputCls(field: keyof FormErrors) {
+    const err = showError(field);
+    return `${inputBase} ${err ? "border-red-500/50 focus:border-red-500/70 bg-red-500/[0.03]" : "border-white/12 focus:border-accent/60 focus:bg-white/[0.06]"}`;
+  }
 
   const labelCls = "block text-xs tracking-[0.15em] uppercase text-white/35 mb-2";
 
@@ -777,6 +896,7 @@ function BookingModal({
           >
             {step === 1 && (
               <>
+                {/* Full Name */}
                 <div>
                   <label className={labelCls}>Full Name</label>
                   <div className="relative">
@@ -786,41 +906,146 @@ function BookingModal({
                       placeholder="Jane Smith"
                       value={form.name}
                       onChange={(e) => update("name", e.target.value)}
-                      className={inputCls + " pl-9"}
+                      onBlur={() => touch("name")}
+                      className={inputCls("name") + " pl-9"}
                     />
                   </div>
+                  <AnimatePresence>
+                    {showError("name") && (
+                      <motion.p
+                        initial={{ opacity: 0, y: -4, height: 0 }}
+                        animate={{ opacity: 1, y: 0, height: "auto" }}
+                        exit={{ opacity: 0, y: -4, height: 0 }}
+                        transition={{ duration: 0.18 }}
+                        className="mt-1.5 text-xs text-red-400/90 flex items-center gap-1.5"
+                      >
+                        <span className="w-3 h-3 rounded-full border border-red-400/60 flex items-center justify-center flex-shrink-0 text-[8px]">!</span>
+                        {showError("name")}
+                      </motion.p>
+                    )}
+                  </AnimatePresence>
                 </div>
+
+                {/* Email */}
                 <div>
                   <label className={labelCls}>Email Address</label>
                   <div className="relative">
                     <Mail size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/25 pointer-events-none" />
                     <input
                       type="email"
-                      placeholder="you@email.com"
+                      placeholder="you@example.com"
                       value={form.email}
                       onChange={(e) => update("email", e.target.value)}
-                      className={inputCls + " pl-9"}
+                      onBlur={() => touch("email")}
+                      className={inputCls("email") + " pl-9"}
                     />
                   </div>
+                  <AnimatePresence>
+                    {showError("email") && (
+                      <motion.p
+                        initial={{ opacity: 0, y: -4, height: 0 }}
+                        animate={{ opacity: 1, y: 0, height: "auto" }}
+                        exit={{ opacity: 0, y: -4, height: 0 }}
+                        transition={{ duration: 0.18 }}
+                        className="mt-1.5 text-xs text-red-400/90 flex items-center gap-1.5"
+                      >
+                        <span className="w-3 h-3 rounded-full border border-red-400/60 flex items-center justify-center flex-shrink-0 text-[8px]">!</span>
+                        {showError("email")}
+                      </motion.p>
+                    )}
+                  </AnimatePresence>
                 </div>
               </>
             )}
 
             {step === 2 && (
               <>
+                {/* Phone with country code */}
                 <div>
                   <label className={labelCls}>Phone Number</label>
-                  <div className="relative">
-                    <Phone size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/25 pointer-events-none" />
-                    <input
-                      type="tel"
-                      placeholder="+1 (555) 000-0000"
-                      value={form.phone}
-                      onChange={(e) => update("phone", e.target.value)}
-                      className={inputCls + " pl-9"}
-                    />
+                  <div className="flex gap-2">
+                    {/* Country code picker */}
+                    <div className="relative flex-shrink-0" ref={countryPickerRef}>
+                      <button
+                        type="button"
+                        onClick={() => setShowCountryPicker((v) => !v)}
+                        className={`flex items-center gap-1.5 h-full px-3 py-3 rounded-xl border text-sm transition-all duration-200 ${
+                          showCountryPicker
+                            ? "border-accent/60 bg-white/[0.06]"
+                            : "border-white/12 bg-white/[0.04] hover:bg-white/[0.06] hover:border-white/20"
+                        }`}
+                      >
+                        <span className="text-base leading-none">
+                          {COUNTRY_CODES.find((c) => c.code === form.countryCode)?.flag ?? "🇺🇸"}
+                        </span>
+                        <span className="text-white/60 text-xs tabular-nums">{form.countryCode}</span>
+                        <ChevronDown size={11} className={`text-white/30 transition-transform duration-200 ${showCountryPicker ? "rotate-180" : ""}`} />
+                      </button>
+
+                      <AnimatePresence>
+                        {showCountryPicker && (
+                          <motion.div
+                            initial={{ opacity: 0, y: -6, scale: 0.97 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: -6, scale: 0.97 }}
+                            transition={{ duration: 0.15 }}
+                            className="absolute top-full left-0 mt-1 z-20 w-40 bg-[#0f1410] border border-white/10 rounded-xl overflow-hidden shadow-xl shadow-black/40"
+                          >
+                            <div className="max-h-48 overflow-y-auto">
+                              {COUNTRY_CODES.map((country, i) => (
+                                <button
+                                  key={`${country.label}-${i}`}
+                                  type="button"
+                                  onClick={() => {
+                                    update("countryCode", country.code);
+                                    setShowCountryPicker(false);
+                                  }}
+                                  className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-sm hover:bg-white/[0.05] transition-colors text-left ${
+                                    form.countryCode === country.code && COUNTRY_CODES.find(x => x.code === form.countryCode)?.label === country.label
+                                      ? "bg-accent/10 text-accent"
+                                      : "text-white/60"
+                                  }`}
+                                >
+                                  <span className="text-base">{country.flag}</span>
+                                  <span className="flex-1 text-xs">{country.label}</span>
+                                  <span className="text-xs text-white/30 tabular-nums">{country.code}</span>
+                                </button>
+                              ))}
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+
+                    {/* Phone digits */}
+                    <div className="relative flex-1">
+                      <input
+                        type="tel"
+                        placeholder="(555) 000-0000"
+                        value={form.phone}
+                        onChange={(e) => update("phone", e.target.value)}
+                        onBlur={() => touch("phone")}
+                        className={inputCls("phone")}
+                      />
+                    </div>
                   </div>
+                  <AnimatePresence>
+                    {showError("phone") && (
+                      <motion.p
+                        initial={{ opacity: 0, y: -4, height: 0 }}
+                        animate={{ opacity: 1, y: 0, height: "auto" }}
+                        exit={{ opacity: 0, y: -4, height: 0 }}
+                        transition={{ duration: 0.18 }}
+                        className="mt-1.5 text-xs text-red-400/90 flex items-center gap-1.5"
+                      >
+                        <span className="w-3 h-3 rounded-full border border-red-400/60 flex items-center justify-center flex-shrink-0 text-[8px]">!</span>
+                        {showError("phone")}
+                      </motion.p>
+                    )}
+                  </AnimatePresence>
                 </div>
+
+                {/* Location */}
                 <div>
                   <label className={labelCls}>Location / City</label>
                   <div className="relative">
@@ -830,10 +1055,27 @@ function BookingModal({
                       placeholder="New York, NY or venue name"
                       value={form.location}
                       onChange={(e) => update("location", e.target.value)}
-                      className={inputCls + " pl-9"}
+                      onBlur={() => touch("location")}
+                      className={inputCls("location") + " pl-9"}
                     />
                   </div>
+                  <AnimatePresence>
+                    {showError("location") && (
+                      <motion.p
+                        initial={{ opacity: 0, y: -4, height: 0 }}
+                        animate={{ opacity: 1, y: 0, height: "auto" }}
+                        exit={{ opacity: 0, y: -4, height: 0 }}
+                        transition={{ duration: 0.18 }}
+                        className="mt-1.5 text-xs text-red-400/90 flex items-center gap-1.5"
+                      >
+                        <span className="w-3 h-3 rounded-full border border-red-400/60 flex items-center justify-center flex-shrink-0 text-[8px]">!</span>
+                        {showError("location")}
+                      </motion.p>
+                    )}
+                  </AnimatePresence>
                 </div>
+
+                {/* Preferred Date */}
                 <div>
                   <label className={labelCls}>
                     Preferred Date{" "}
@@ -844,10 +1086,26 @@ function BookingModal({
                     <input
                       type="date"
                       value={form.date}
+                      min={(() => { const d = new Date(); d.setDate(d.getDate() + 1); return d.toISOString().split("T")[0]; })()}
                       onChange={(e) => update("date", e.target.value)}
-                      className={inputCls + " pl-9 [color-scheme:dark]"}
+                      onBlur={() => touch("date")}
+                      className={inputCls("date") + " pl-9 [color-scheme:dark]"}
                     />
                   </div>
+                  <AnimatePresence>
+                    {showError("date") && (
+                      <motion.p
+                        initial={{ opacity: 0, y: -4, height: 0 }}
+                        animate={{ opacity: 1, y: 0, height: "auto" }}
+                        exit={{ opacity: 0, y: -4, height: 0 }}
+                        transition={{ duration: 0.18 }}
+                        className="mt-1.5 text-xs text-red-400/90 flex items-center gap-1.5"
+                      >
+                        <span className="w-3 h-3 rounded-full border border-red-400/60 flex items-center justify-center flex-shrink-0 text-[8px]">!</span>
+                        {showError("date")}
+                      </motion.p>
+                    )}
+                  </AnimatePresence>
                 </div>
               </>
             )}
@@ -859,7 +1117,7 @@ function BookingModal({
                   {[
                     { icon: User, label: "Name", value: form.name },
                     { icon: Mail, label: "Email", value: form.email },
-                    { icon: Phone, label: "Phone", value: form.phone },
+                    { icon: Phone, label: "Phone", value: `${form.countryCode} ${form.phone}` },
                     { icon: MapPin, label: "Location", value: form.location },
                     ...(form.date ? [{ icon: CalendarDays, label: "Date", value: form.date }] : []),
                   ].map(({ icon: Icon, label, value }) => (
@@ -880,7 +1138,7 @@ function BookingModal({
                     placeholder="Special requirements, venue details, creative vision..."
                     value={form.notes}
                     onChange={(e) => update("notes", e.target.value)}
-                    className={inputCls + " resize-none"}
+                    className={`${inputBase} border-white/12 focus:border-accent/60 focus:bg-white/[0.06] resize-none`}
                   />
                 </div>
               </>
@@ -889,41 +1147,52 @@ function BookingModal({
         </AnimatePresence>
 
         {/* Footer */}
-        <div className="px-7 pb-7 flex gap-3">
-          {step > 1 && (
-            <button
-              onClick={() => setStep((s) => s - 1)}
-              className="flex items-center gap-1.5 px-4 py-3 rounded-xl border border-white/10 text-white/40 text-sm hover:text-white/70 hover:border-white/20 transition-all"
-            >
-              <ArrowLeft size={14} />
-              Back
-            </button>
-          )}
-          {step < 3 ? (
-            <motion.button
-              whileHover={canProceed() ? { scale: 1.02 } : {}}
-              whileTap={canProceed() ? { scale: 0.98 } : {}}
-              onClick={() => canProceed() && setStep((s) => s + 1)}
-              className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-medium text-sm transition-all duration-200 ${
-                canProceed()
-                  ? "bg-accent text-white hover:bg-accent/90 shadow-lg shadow-accent/20"
-                  : "bg-white/5 text-white/20 cursor-not-allowed"
-              }`}
-            >
-              Continue
-              <ArrowRight size={15} />
-            </motion.button>
-          ) : (
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => setSubmitted(true)}
-              className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-accent text-white font-medium text-sm hover:bg-accent/90 shadow-lg shadow-accent/20 transition-all duration-200"
-            >
-              Submit Request
-              <CheckCircle2 size={15} />
-            </motion.button>
-          )}
+        <div className="px-7 pb-7 flex flex-col gap-3">
+          <div className="flex gap-3">
+            {step > 1 && (
+              <button
+                onClick={() => { setSubmitAttempted(false); setStep((s) => s - 1); }}
+                className="flex items-center gap-1.5 px-4 py-3 rounded-xl border border-white/10 text-white/40 text-sm hover:text-white/70 hover:border-white/20 transition-all"
+              >
+                <ArrowLeft size={14} />
+                Back
+              </button>
+            )}
+            {step < 3 ? (
+              <motion.button
+                whileTap={{ scale: 0.98 }}
+                onClick={handleNext}
+                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-medium text-sm bg-accent text-white hover:bg-accent/90 shadow-lg shadow-accent/20 transition-all duration-200"
+              >
+                Continue
+                <ArrowRight size={15} />
+              </motion.button>
+            ) : (
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={handleSubmit}
+                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-accent text-white font-medium text-sm hover:bg-accent/90 shadow-lg shadow-accent/20 transition-all duration-200"
+              >
+                Submit Request
+                <CheckCircle2 size={15} />
+              </motion.button>
+            )}
+          </div>
+          {/* Step-level error summary shown after attempt */}
+          <AnimatePresence>
+            {submitAttempted && ((step === 1 && !step1Valid) || (step === 2 && !step2Valid)) && (
+              <motion.p
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                transition={{ duration: 0.2 }}
+                className="text-xs text-red-400/70 text-center"
+              >
+                Please fix the errors above before continuing.
+              </motion.p>
+            )}
+          </AnimatePresence>
         </div>
       </motion.div>
     </motion.div>

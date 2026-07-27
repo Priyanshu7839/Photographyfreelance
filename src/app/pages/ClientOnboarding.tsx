@@ -26,7 +26,7 @@ import {
   Clock,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router";
-import { adressautocomplete, createClient, getTeamMembers, getWorkflowSteps, getWorkflowTemplates } from "../../Utils/Apicalls";
+import { adressautocomplete, createClient, createMember, getTeamMembers, getWorkflowSteps, getWorkflowTemplates } from "../../Utils/Apicalls";
 import { toast } from "sonner";
 
 // Mock team members data
@@ -48,7 +48,7 @@ const eventTypes = [
   { value: "haldi", label: "Haldi", icon: Palette },
   { value: "mehendi", label: "Mehendi", icon: Palette },
   { value: "sangeet", label: "Sangeet", icon: Music },
-  { value: "custom", label: "Custom Event", icon: Briefcase },
+  // { value: "custom", label: "Custom Event", icon: Briefcase },
 ];
 
 
@@ -109,35 +109,131 @@ function MemberChip({ member, onRemove }) {
 
 // ─── Add Member Mini-Form ──────────────────────────────────────────────────────
 
-interface NewMemberForm { name: string; role: string; email: string; phone: string; }
+interface NewMemberForm { name: string; role: string; email: string; phone: string; password:string }
 
 function AddMemberForm({
   onAdd,
   onCancel,
-}: {
-  onAdd: (member) => void;
-  onCancel: () => void;
+  fetchTeam
 }) {
-  const [form, setForm] = useState<NewMemberForm>({ name: "", role: "", email: "", phone: "" });
+  const [form, setForm] = useState<NewMemberForm>({ name: "", role: "", email: "", phone: "",password:"" });
   const nameRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { nameRef.current?.focus(); }, []);
 
-  const isValid = form.name.trim() && form.role.trim();
+  const emailRegex =
+  /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-  function submit() {
-    if (!isValid) return;
-    const id = `custom-${Date.now()}`;
-    onAdd({
-      id,
-      name: form.name.trim(),
-      role: form.role.trim(),
-      email: form.email.trim(),
-      phone: form.phone.trim(),
-      avatar: initials(form.name),
-    });
+const phoneRegex =
+  /^\+?[1-9]\d{9,14}$/;
+
+const nameRegex =
+  /^[A-Za-z\s'-]{2,50}$/;
+
+  const passwordRegex =
+  /^(?=.*[a-z])(?=.*[A-Z]).{8,}$/;
+
+  const isValid = form.name.trim() && form.role.trim() &&form.email.trim() && form.phone.trim() && form.password.trim();;
+  const [adding,setAdding] = useState(false)
+ async function submit() {
+  const name = form.name.trim();
+  const role = form.role.trim();
+  const email = form.email.trim();  
+  const phone = form.phone.trim();
+  const password = form.password.trim()
+  
+
+  if (!name) {
+    toast("Name is required");
+    return;
   }
 
+  if (!nameRegex.test(name)) {
+    toast("Enter a valid name");
+    return;
+  }
+
+  if (!role) {
+    toast("Role is required");
+    return;
+  }
+
+  if (!email) {
+    toast("Email is required");
+    return;
+  }
+
+  if (!emailRegex.test(email)) {
+    toast("Enter a valid email");
+    return;
+  }
+
+  if (!phone) {
+    toast("Phone number is required");
+    return;
+  }
+
+  if (!phoneRegex.test(phone)) {
+    toast("Enter a valid phone number");
+    return;
+  }
+
+
+  if (!password) {
+  toast("Password is required");
+  return;
+}
+
+if (!passwordRegex.test(password)) {
+  toast(
+    "Password must be at least 8 characters and contain both uppercase and lowercase letters."
+  );
+  return;
+}
+
+
+
+ 
+  
+
+  
+try {
+    setAdding(true);
+
+    const res = await createMember({
+      name,
+      role,
+      email,
+      phone,
+      password,
+    });
+
+    toast.success(res.message || "Member created successfully!");
+
+    fetchTeam()
+
+
+    
+
+    setForm({
+      name: "",
+      role: "",
+      email: "",
+      phone: "",
+      password: "",
+    });
+  } catch (err: any) {
+    toast.error(
+      err.response?.data?.message ||
+        "Failed to create member."
+    );
+  } finally {
+    setAdding(false);
+    onCancel()
+
+    
+  }
+}
   const field = (
     label: string,
     key: keyof NewMemberForm,
@@ -177,9 +273,10 @@ function AddMemberForm({
         <p className="text-xs tracking-[0.15em] uppercase text-accent/70 mb-3">New Team Member</p>
         <div className="grid grid-cols-2 gap-3 mb-3">
           {field("Full Name", "name", "Jane Smith", User, "text", true)}
-          {field("Role / Position", "role", "Photographer", Briefcase, "text", true)}
+          {field("Role ", "role", "Photographer", Briefcase, "text", true)}
           {field("Email", "email", "jane@studio.com", Mail, "email")}
           {field("Phone", "phone", "+1 (555) 000-0000", Phone, "tel")}
+          {field("Password", "password", "shh...", Phone, "password")}
         </div>
         <div className="flex gap-2">
           <button
@@ -198,7 +295,7 @@ function AddMemberForm({
             }`}
           >
             <UserPlus size={12} />
-            Add Member
+          {adding?'Adding...':'Add Member'}
           </button>
         </div>
       </div>
@@ -214,6 +311,7 @@ function StepAssigneePicker({
   assignedIds,
   onToggle,
   onAddMember,
+  fetchTeam
 }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -341,8 +439,11 @@ function StepAssigneePicker({
                       onAddMember(member);
                       onToggle(member.id);
                       setShowAddForm(false);
+                      
                     }}
                     onCancel={() => setShowAddForm(false)}
+                    fetchTeam={()=>fetchTeam()}
+                    
                   />
                 ) : (
                   <motion.button
@@ -471,8 +572,7 @@ useEffect(() => {
   fetchTemplates();
 }, []);
 
-useEffect(() => {
-  const fetchTeamMembers = async () => {
+const fetchTeamMembers = async () => {
     try {
       const response =
         await getTeamMembers();
@@ -482,6 +582,9 @@ useEffect(() => {
       console.error(error.message);
     }
   };
+
+useEffect(() => {
+  
 
   fetchTeamMembers();
 }, []);
@@ -634,7 +737,7 @@ const allAssignedMembers = teamMembers.filter((member) =>
 
   const canProceed = () => {
     if (currentStep === 1) {
-      return clientName && eventDate && eventType && selectedLocation;
+      return clientName  && eventType 
     }
     if (currentStep === 2) {
       return selectedTemplate && workflowSteps.length > 0;
@@ -648,6 +751,8 @@ const allAssignedMembers = teamMembers.filter((member) =>
 
 
   const today = new Date().toISOString().split("T")[0];
+
+  
 
 
   const eachoneAssigned = workflowSteps.every((step) => {
@@ -765,7 +870,7 @@ useEffect(()=>{
                 </div>
 
                 {/* Event Date */}
-                <div className="flex items-center gap-2">
+                {/* <div className="flex items-center gap-2">
                   <div className="w-full">
                   <label className="block text-sm opacity-70 mb-2">Event Start Date</label>
                   <div className="relative">
@@ -793,7 +898,7 @@ useEffect(()=>{
                   </div>
                 </div>
  
-                </div>
+                </div> */}
                 {/* Event Type */}
                 <div>
                   <label className="block text-sm opacity-70 mb-2">Event Type</label>
@@ -841,7 +946,7 @@ useEffect(()=>{
                 </div>
 
                 {/* Event Location */}
-                <div>
+                {/* <div>
                   <label className="block text-sm opacity-70 mb-2">Event Location</label>
                   <div className="relative">
                     <MapPin className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 opacity-40" />
@@ -873,7 +978,7 @@ useEffect(()=>{
       ))}
     </div>
   )}
-                </div>
+                </div> */}
               </div>
             </motion.div>
           )}
@@ -1023,6 +1128,8 @@ useEffect(()=>{
   
   
                   const hasAssignees = assignment?.assigned_member_ids?.length > 0;
+
+                  console.log(teamAssignments?.[index-1]?.date)
           
                   return (
                     <motion.div
@@ -1055,6 +1162,9 @@ useEffect(()=>{
                             allMembers={teamMembers}
                             assignedIds={assignment?.assigned_member_ids || []}
                             onToggle={(memberId) => handleAssignTeamMember(step.workflow_step_id, memberId)}
+
+                            fetchTeam={()=> fetchTeamMembers()}
+                            
                             // onAddMember={handleAddMember}
                           />
 
@@ -1063,6 +1173,16 @@ useEffect(()=>{
                               <Calendar size={11} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-white/20 pointer-events-none" />
                               <input
                                 type="date"
+
+                                  min = {index === 0 ?today : teamAssignments?.[index-1]?.date}
+                                  disabled={
+  index > 0 &&
+  !teamAssignments?.find(
+    (a) =>
+      a.workflow_step_id ===
+      workflowSteps[index - 1].workflow_step_id
+  )?.date
+}
                                value={assignment?.date || ""}
                                onChange={(e) =>
     handleUpdateStepSchedule(
@@ -1167,8 +1287,7 @@ useEffect(()=>{
                     {[
                       { label: "Name", value: clientName },
                       { label: "Event Type", value: eventTypes.find((t) => t.value === eventType)?.label ?? "" },
-                      { label: "Date", value: eventDate ? new Date(eventDate).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) : "" },
-                      { label: "Location", value: eventLocation },
+                      
                     ].map(({ label, value }) => (
                       <div key={label}>
                         <p className="text-[10px] tracking-[0.15em] uppercase text-white/25 mb-1">{label}</p>

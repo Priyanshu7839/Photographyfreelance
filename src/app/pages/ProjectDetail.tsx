@@ -84,6 +84,7 @@ import {
   getMoodboardSongs,
   getProductionOverview,
   getProductionSetup,
+  getProjectStepsForTravel,
   getTeamMembers,
   getTravelData,
   getTravelDiscussions,
@@ -91,6 +92,8 @@ import {
   updateClient,
   updateClientNotes,
   updateInvoiceItems,
+  updateProjectStep,
+  updateProjectStepTravel,
   updateWorkflowStatus,
   uploadMultipartFileClientassets,
 } from "../../Utils/Apicalls";
@@ -106,6 +109,24 @@ const mockProject = {
   status: "In Progress" as const,
   totalSteps: 8,
   completedSteps: 6,
+};
+
+
+const getInitials = (name) => {
+  const words = name
+    ?.match(/[A-Za-z]+/g) || [];
+
+  if (words.length === 0)
+    return "";
+
+  if (words.length === 1)
+    return words[0]
+      .slice(0, 2)
+      .toUpperCase();
+
+  return `${words[0][0]}${
+    words[words.length - 1][0]
+  }`.toUpperCase();
 };
 
 
@@ -595,7 +616,7 @@ const ProjectDetailCardShimmer = ({ className = "" }: { className?: string }) =>
 export default function ProjectDetail() {
   const [travelLocations, setTravelLocations] = useState(INITIAL_TRAVEL_LOCATIONS);
   const [editingTravelRow, setEditingTravelRow] = useState<number | null>(null);
-  const [travelRowDraft, setTravelRowDraft] = useState<{ venue: string; distance: string }>({ venue: "", distance: "" });
+  const [travelRowDraft, setTravelRowDraft] = useState<{ venue: string; distance: string }>({ venue: "", travel_distance: "" });
   const [editingTravelSetting, setEditingTravelSetting] = useState<"freeAllowance" | "rate" | null>(null);
 
 
@@ -858,31 +879,92 @@ const [
   const [crewSetup, setCrewSetup] = useState(crewMembers);
 
 
+  // const fetchTravelData =
+  // async () => {
+  //   try {
+  //     setTravelDataLoading(
+  //       true
+  //     );
+
+  //     const response =
+  //       await getTravelData(
+  //         clientId
+  //       );
+
+  //     setTravelData(
+  //       response.data
+  //     );
+  //   } catch (error) {
+  //     toast.error(
+  //       error.message
+  //     );
+  //   } finally {
+  //     setTravelDataLoading(
+  //       false
+  //     );
+  //   }
+  // };
+
+
   const fetchTravelData =
   async () => {
     try {
-      setTravelDataLoading(
-        true
-      );
-
       const response =
-        await getTravelData(
+        await getProjectStepsForTravel(
           clientId
         );
+
+        console.log(response.data)
 
       setTravelData(
         response.data
       );
     } catch (error) {
-      toast.error(
-        error.message
-      );
-    } finally {
-      setTravelDataLoading(
-        false
-      );
+      console.error(error);
     }
   };
+
+
+  const handleUpdateTravel = async (
+  venue,travel_distance,id
+) => {
+  try {
+
+    const promise = updateProjectStepTravel(
+        clientId,
+        id,
+        {
+          venue: venue,
+          travel_distance:
+            travel_distance,
+        }
+      );
+
+  toast.promise(promise, {
+    loading: "Updating...",
+    success: "Updated successfully!",
+    error: (err) => err.response?.data?.message || "Update failed",
+  });
+
+  const response = await promise;
+    
+   
+
+    // Refresh data if needed
+    await fetchTravelData();
+    await fetchInvoices();
+  } catch (error) {
+    toast.error(
+      error.response?.data
+        ?.message ||
+        "Failed to update travel information."
+    );
+  }
+};
+
+
+  
+
 
   const fetchProductionOverview =
   async () => {
@@ -1302,13 +1384,9 @@ const handleUploadFiles =
   };
 
 
-const [page, setPage] =
-  useState(1);
 
-const [
-  hasNextPage,
-  setHasNextPage,
-] = useState(false);
+
+
 
 const [assetsCache, setAssetsCache] =
   useState({
@@ -1581,12 +1659,24 @@ const fetchMoodboardAssets =
     fetchTeamMembers();
   }, []);
 
+   // Add / Edit Step modal
   const [showAddStepModal, setShowAddStepModal] = useState(false);
+  const [stepModalMode, setStepModalMode] = useState<"add" | "edit">("add");
   const [newStepName, setNewStepName] = useState("");
-  const [newStepAssignee, setNewStepAssignee] = useState("");
-  const [newStepOrder, setNewStepOrder] = useState("");
+  const [newStepAssignee, setNewStepAssignee] = useState("Sarah Chen");
+  const [newStepAssigneeIds, setNewStepAssigneeIds] = useState<number[]>([]);
+  const [newStepVenue, setNewStepVenue] = useState("");
+  const [newStepScheduledTime, setNewStepScheduledTime] = useState("");
+  const [newStepOrder, setNewStepOrder] = useState<number | "">(workflowData?.length + 1);
+  // Edit Steps state (schema-matched)
+  const [projectSteps, setProjectSteps] = useState();
+  const [selectedEditStep, setSelectedEditStep] = useState(null);
+  const [editStepDraft, setEditStepDraft] = useState(null);
+
   const [addingStep,setAddingStep] = useState(false)
   
+
+  useEffect(()=>{setProjectSteps(workflowData)},[workflowData])
 
   useEffect(()=>{
     setNewStepOrder(workflowData?.length + 1)
@@ -1602,6 +1692,15 @@ const fetchMoodboardAssets =
   async () => {
 
     setAddingStep(true)
+    const dateValue = newStepScheduledTime
+  ? newStepScheduledTime?.split("T")[0]
+  : null;
+
+  const timeValue = newStepScheduledTime
+  ? newStepScheduledTime?.split("T")[1]
+  : null;
+  setAddingStep(true)
+
     try {
       await addProjectStep(
         clientId,
@@ -1609,11 +1708,14 @@ const fetchMoodboardAssets =
           step_name:
             newStepName,
 
-          assigned_member_id:
-            newStepAssignee,
+          assigned_member_ids:
+            newStepAssigneeIds,
 
           step_order:
             newStepOrder,
+          venue:newStepVenue,
+          date:dateValue,
+          time:timeValue
         }
       );
 
@@ -1634,7 +1736,42 @@ const fetchMoodboardAssets =
     setShowAddStepModal(false);
 
     }
+
+
+ 
   };
+const [updatingStep,setUpdatingStep] = useState(false)
+  const handleUpdateStep = async (step) => {
+  try {
+    setUpdatingStep(true)
+    const res = await updateProjectStep({
+      project_step_id: step.project_step_id,
+      step_name: step.step_name,
+      assigned_member_ids: step.assigned_member_ids,
+      venue: step.venue,
+      scheduled_time: step.scheduled_time,
+    });
+
+      fetchWorkflow();
+      fetchOverview()
+      fetchClientHeader()
+
+    toast.success(
+      res.message || "Step updated successfully."
+    );
+
+   
+  } catch (error: any) {
+    toast.error(
+      error.response?.data?.message ||
+        "Failed to update project step."
+    );
+  }
+  finally{
+    setUpdatingStep(false)
+    setShowAddStepModal(false)
+  }
+};
 
 
 
@@ -1764,17 +1901,20 @@ const [showPaymentStatusMenu, setShowPaymentStatusMenu] = useState(false);
     setEditingInvoiceId(null)
     
      try {
-      const response =
-        await updateInvoiceItems(
+
+      const promise = updateInvoiceItems(
           updateInvoiceItem
         );
 
       
 
-      toast.success(
-        response.message
-      );
+   toast.promise(promise, {
+    loading: "Updating...",
+    success: "Updated successfully!",
+    error: (err) => err.response?.data?.message || "Update failed",
+  });
 
+  const response = await promise;
       // Refresh invoice data
       await fetchInvoices();
     } catch (error) {
@@ -1795,12 +1935,17 @@ const [showPaymentStatusMenu, setShowPaymentStatusMenu] = useState(false);
 const deletingItem = invoiceItems?.find((item)=>item.invoice_item_id === id)
     
     try {
-      const response =
-        await deleteInvoiceItems(deletingItem);
+      const promise =
+         deleteInvoiceItems(deletingItem);
 
-      toast.success(
-        response.message
-      );
+      toast.promise(promise, {
+  loading: "Updating...",
+  success: "Updated successfully!",
+  error: (err) =>
+    err.response?.data?.message || "Update failed",
+});
+
+const response = await promise;
 
       await fetchInvoices();
     } catch (error) {
@@ -1829,7 +1974,19 @@ const deletingItem = invoiceItems?.find((item)=>item.invoice_item_id === id)
       rate: Number(newRowDraft.rate),
     };
 
-    const res = await addInvoiceItem(clientId, payload);
+   
+
+    const promise = addInvoiceItem(clientId, payload)
+
+    toast.promise(promise, {
+  loading: "Updating...",
+  success: "Updated successfully!",
+  error: (err) =>
+    err.response?.data?.message || "Update failed",
+});
+
+const res = await promise;
+
 
     if (res.success) {
       toast.success("Invoice item added successfully");
@@ -1844,12 +2001,8 @@ const deletingItem = invoiceItems?.find((item)=>item.invoice_item_id === id)
       err.response?.data?.message || "Failed to add invoice item"
     );
   } finally {
-    
     setNewRowDraft({ item_name: "", quantity: 1, rate: 0 });
   }
-
-
-    
 
   }
 
@@ -1861,6 +2014,9 @@ const deletingItem = invoiceItems?.find((item)=>item.invoice_item_id === id)
     setInvoiceRowDraft(null);
     setEditingInvoiceId(null)
   }
+
+
+
 
 
 
@@ -1966,46 +2122,7 @@ Severability -  If any provision of this Agreement is determined to be illegal, 
   const isDrawingRef = useRef(false);
   const [hasDrawnSignature, setHasDrawnSignature] = useState(false);
 
-  function handleCanvasMouseDown(e: React.MouseEvent<HTMLCanvasElement>) {
-    const canvas = signatureCanvasRef.current;
-    if (!canvas) return;
-    isDrawingRef.current = true;
-    const rect = canvas.getBoundingClientRect();
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    ctx.beginPath();
-    ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
-  }
-
-  function handleCanvasMouseMove(e: React.MouseEvent<HTMLCanvasElement>) {
-    if (!isDrawingRef.current) return;
-    const canvas = signatureCanvasRef.current;
-    if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    ctx.strokeStyle = "#ffffff";
-    ctx.lineWidth = 2;
-    ctx.lineCap = "round";
-    ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
-    ctx.stroke();
-    setHasDrawnSignature(true);
-  }
-
-  function handleCanvasMouseUp() {
-    isDrawingRef.current = false;
-  }
-
-  function clearCanvas() {
-    const canvas = signatureCanvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    setHasDrawnSignature(false);
-  }
-
-
+  
 
   // License & Insurance uploaded docs
   const [uploadedDocs, setUploadedDocs] = useState<Array<{
@@ -2241,16 +2358,7 @@ useEffect(() => {
                         {clientData?.event_name}
                       </span>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Calendar className="w-4 h-4" />
-                      <span>
-                        {clientData &&
-                          format(new Date(clientData?.event_date), "MMMM dd, yyyy")}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2 capitalize">
-                      <span>{clientData?.event_location}</span>
-                    </div>
+                   
                   </div>
                 </>
               )}
@@ -2430,12 +2538,18 @@ useEffect(() => {
                           <Clock className="w-5 h-5 text-accent" />
                         </div>
                         <div>
-                          <p className="text-lg mb-1">
+                          <p className="text-lg mb-1 capitalize">
                             {overviewData?.current_step?.step_name}
                           </p>
                           <p className="text-sm opacity-60">
-                            Assigned to{" "}
-                            {overviewData?.current_step?.assigned_member}
+                            Assigned Members
+
+                            {overviewData?.current_step?.assigned_members?.map((item,i)=>{
+                              return(
+                                    <h1 key={i} className="text-sm flex items-center gap-2"><div className='shrink-0 w-2 h-2 rounded-full bg-accent'></div> {item}</h1>
+                              )
+                            })}
+                           
                           </p>
                         </div>
                       </div>
@@ -3835,7 +3949,7 @@ useEffect(() => {
                 className="space-y-6"
               >
                 {(() => {
-                  const totalMiles = travelLocations.reduce((s, l) => s + l.distance, 0);
+                  const totalMiles = travelData?.reduce((s, l) => s + l.travel_distance, 0);
                   const billableMiles = Math.max(0, totalMiles - travelConfig.freeAllowanceMiles);
                   const travelFee = parseFloat((billableMiles * travelConfig.ratePerMile).toFixed(2));
 
@@ -3869,11 +3983,11 @@ useEffect(() => {
                         </div>
 
                         {/* Rows */}
-                        {travelLocations.map((loc, idx) => {
-                          const isEditing = editingTravelRow === loc.id;
+                        {travelData?.map((loc, idx) => {
+                          const isEditing = editingTravelRow === loc.project_step_id;
                           return (
                             <div
-                              key={loc.id}
+                              key={loc.project_step_id}
                               className={`group grid grid-cols-[1fr_160px_120px_48px] gap-0 px-5 py-0 border-b border-white/[0.06] last:border-b-0 transition-colors ${
                                 isEditing ? "bg-accent/5" : "hover:bg-white/[0.025]"
                               }`}
@@ -3891,7 +4005,7 @@ useEffect(() => {
                                   </div>
                                   {/* Step label (read-only in edit mode) */}
                                   <div className="py-3 pr-3 flex items-center">
-                                    <span className="text-sm opacity-50">{loc.step}</span>
+                                    <span className="text-sm opacity-50">{loc.step_name}</span>
                                   </div>
                                   {/* Distance input */}
                                   <div className="py-3 flex items-center justify-end pr-3">
@@ -3899,8 +4013,8 @@ useEffect(() => {
                                       <input
                                         type="number"
                                         min={0}
-                                        value={travelRowDraft.distance}
-                                        onChange={(e) => setTravelRowDraft(d => ({ ...d, distance: e.target.value }))}
+                                        value={travelRowDraft.travel_distance}
+                                        onChange={(e) => setTravelRowDraft(d => ({ ...d, travel_distance: e.target.value }))}
                                         className="w-20 bg-white/5 border border-accent/30 rounded-lg px-2 py-1.5 text-sm text-right focus:outline-none focus:border-accent/60"
                                       />
                                       <span className="text-xs opacity-40">mi</span>
@@ -3910,9 +4024,12 @@ useEffect(() => {
                                   <div className="py-3 flex items-center justify-center gap-1">
                                     <button
                                       onClick={() => {
-                                        const dist = parseFloat(travelRowDraft.distance);
+                                        const dist = parseFloat(travelRowDraft.travel_distance);
                                         if (!isNaN(dist) && travelRowDraft.venue.trim()) {
-                                          setTravelLocations(prev => prev.map(l => l.id === loc.id ? { ...l, venue: travelRowDraft.venue.trim(), distance: Math.max(0, dist) } : l));
+                                              handleUpdateTravel(travelRowDraft.venue,travelRowDraft.travel_distance,loc.project_step_id)
+
+                                          
+                                          // setTravelLocations(prev => prev.map(l => l.id === loc.id ? { ...l, venue: travelRowDraft.venue.trim(), travel_distance: Math.max(0, dist) } : l));
                                         }
                                         setEditingTravelRow(null);
                                       }}
@@ -3941,19 +4058,19 @@ useEffect(() => {
                                   </div>
                                   {/* Step */}
                                   <div className="py-4 pr-3 flex items-center">
-                                    <span className="text-xs px-2 py-1 rounded-full bg-white/5 border border-white/10 opacity-60">{loc.step}</span>
+                                    <span className="text-xs px-2 py-1 rounded-full bg-white/5 border border-white/10 opacity-60 capitalize">{loc.step_name}</span>
                                   </div>
                                   {/* Distance */}
                                   <div className="py-4 pr-3 flex items-center justify-end">
-                                    <span className="text-sm tabular-nums">{loc.distance} <span className="opacity-40">mi</span></span>
+                                    <span className="text-sm tabular-nums">{loc.travel_distance} <span className="opacity-40">mi</span></span>
                                   </div>
                                   {/* Edit button (on hover) */}
                                   <div className="py-4 flex items-center justify-center">
                                     
                                       <button
                                         onClick={() => {
-                                          setEditingTravelRow(loc.id);
-                                          setTravelRowDraft({ venue: loc.venue, distance: String(loc.distance) });
+                                          setEditingTravelRow(loc.project_step_id);
+                                          setTravelRowDraft({ venue: loc.venue, travel_distance: String(loc.travel_distance) });
                                         }}
                                         className="w-7 h-7 flex items-center justify-center rounded-lg opacity-0 group-hover:opacity-60 hover:!opacity-100 hover:bg-white/10 transition-all"
                                         title="Edit"
@@ -3973,7 +4090,7 @@ useEffect(() => {
                           <div className="col-span-2 flex items-center gap-2 text-xs opacity-50 uppercase tracking-widest">
                             <span>Total Distance</span>
                             <span className="opacity-40">·</span>
-                            <span>{travelLocations.length} venue{travelLocations.length !== 1 ? "s" : ""}</span>
+                            <span>{travelData?.length} venue{travelData?.length !== 1 ? "s" : ""}</span>
                           </div>
                           <div className="flex items-center justify-end pr-3">
                             <span className="text-base tabular-nums">{totalMiles} <span className="text-xs opacity-40">mi</span></span>
@@ -4259,7 +4376,7 @@ useEffect(() => {
                     <div className="flex items-center gap-2">
                       {/* Payment status selector */}
                       <div className="relative">
-                        <button
+                        {/* <button
                           onClick={() => setShowPaymentStatusMenu(p => !p)}
                           className={`flex items-center gap-2 px-3.5 py-2 rounded-xl border text-xs font-medium transition-all ${
                             invoicePaymentStatus === "Paid"
@@ -4274,7 +4391,7 @@ useEffect(() => {
                           }`} />
                           {invoicePaymentStatus}
                           <ChevronDown className="w-3 h-3 opacity-60" />
-                        </button>
+                        </button> */}
                         <AnimatePresence>
                           {showPaymentStatusMenu && (
                             <motion.div
@@ -4539,9 +4656,13 @@ useEffect(() => {
                         <span>${invoice?.invoice?.subtotal_amount}</span>
                       </div>
                       <div className="flex justify-between text-sm">
+                        <span className="opacity-60">Travel Cost</span>
+                        <span>${invoice?.invoice?.travel_fee}</span>
+                      </div>
+                      {/* <div className="flex justify-between text-sm">
                         <span className="opacity-60">Tax (10%)</span>
                         <span>${invoice?.invoice?.tax_amount}</span>
-                      </div>
+                      </div> */}
                       {invoice?.discount_amount > 0 && (
                         <div className="flex justify-between text-sm text-accent">
                           <span>Discount</span>
@@ -4641,7 +4762,7 @@ useEffect(() => {
                     <div className="p-4 bg-white/5 rounded-xl">
                       <p className="text-xs opacity-60 mb-2">CLIENT</p>
                       <p className="text-lg">{clientData?.client_name}</p>
-                      <p className="text-sm opacity-70 mt-1">{clientData?.event_name} • {format(new Date(clientData?.event_date), "MMM dd, yyyy")}</p>
+                      <p className="text-sm opacity-70 mt-1">{clientData?.event_name} </p>
                     </div>
                   </div>
 
@@ -4948,27 +5069,10 @@ useEffect(() => {
                       ))}
                     </select>
                   </div>
-                  <div>
-                    <label className="text-xs tracking-widest opacity-50 mb-2 block">EVENT DATE</label>
-                    <input
-                      type="date"
-                      value={editDraft.event_date}
-                      onChange={(e) => setEditDraft((p) => ({ ...p, event_date: e.target.value }))}
-                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-base focus:outline-none focus:border-accent/50 transition-colors"
-                    />
-                  </div>
+                
                 </div>
 
-                <div>
-                  <label className="text-xs tracking-widest opacity-50 mb-2 block">LOCATION</label>
-                  <input
-                    type="text"
-                    value={editDraft.event_location}
-                    onChange={(e) => setEditDraft((p) => ({ ...p, event_location: e.target.value }))}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-base focus:outline-none focus:border-accent/50 transition-colors"
-                  />
-                </div>
-
+             
                
               </div>
 
@@ -4992,8 +5096,8 @@ useEffect(() => {
         )}
       </AnimatePresence>
 
-      {/* Add Step Modal */}
-     <AnimatePresence>
+     {/* Add / Edit Step Modal */}
+      <AnimatePresence>
         {showAddStepModal && (
           <motion.div
             initial={{ opacity: 0 }}
@@ -5008,134 +5112,425 @@ useEffect(() => {
               exit={{ scale: 0.95, y: 16 }}
               transition={{ type: "spring", damping: 28, stiffness: 300 }}
               onClick={(e) => e.stopPropagation()}
-              className="relative bg-[#0e0e0e] border border-white/10 rounded-3xl p-8 max-w-md w-full shadow-2xl max-h-[90vh] overflow-y-auto"
+              className="relative bg-[#0e0e0e] border border-white/10 rounded-3xl p-7 max-w-lg w-full shadow-2xl max-h-[92vh] overflow-y-auto"
             >
-              <div className="flex items-center justify-between mb-7">
-                <h2 className="text-2xl">Add Workflow Step</h2>
-                <button onClick={() => setShowAddStepModal(false)} className="w-9 h-9 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center transition-colors">
+              {/* Header */}
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl tracking-tight">Manage Steps</h2>
+                <button
+                  onClick={() => setShowAddStepModal(false)}
+                  className="w-9 h-9 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center transition-colors"
+                >
                   <X className="w-4 h-4" />
                 </button>
               </div>
 
-              <div className="space-y-5">
-                {/* Step Name */}
-                <div>
-                  <label className="text-xs tracking-widest opacity-50 mb-2 block">STEP NAME</label>
-                  <input
-                    type="text"
-                    value={newStepName}
-                    onChange={(e) => setNewStepName(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && saveAddStep()}
-                    placeholder="e.g. Client Review, Final Export..."
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-base focus:outline-none focus:border-accent/50 transition-colors"
-                    autoFocus
-                  />
-                </div>
-
-                {/* Assign To */}
-                <div>
-                  <label className="text-xs tracking-widest opacity-50 mb-2 block">ASSIGN TO</label>
-                  <select
-                    value={newStepAssignee}
-                    onChange={(e) => setNewStepAssignee(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-base focus:outline-none focus:border-accent/50 transition-colors appearance-none"
-                  >
-                    {teamMembers?.map((name) => (
-                      <option key={name?.member_id} value={name?.member_id} className="bg-[#0e0e0e]">{name?.full_name}</option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Step Order */}
-                <div>
-                  <label className="text-xs tracking-widest opacity-50 mb-2 block">STEP ORDER</label>
-                  <input
-                    type="number"
-                    min={1}
-                    max={workflowData?.length + 1}
-                    value={newStepOrder}
-                    onChange={(e) => {
-                      const val = e.target.value === "" ? "" : Math.min(workflowData?.length + 1, Math.max(1, Number(e.target.value)));
-                      setNewStepOrder(val === "" ? "" : Number(val));
-                    }}
-                    placeholder={`1 – ${workflowData?.length + 1} (default: end)`}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-base focus:outline-none focus:border-accent/50 transition-colors"
-                  />
-                  <p className="text-xs opacity-40 mt-1.5">Enter a position between 1 and {workflowData?.length + 1}</p>
-                </div>
-
-                {/* Current steps preview */}
-                <div>
-                  <label className="text-xs tracking-widest opacity-50 mb-3 block">CURRENT STEPS</label>
-                  <div className="space-y-1.5 max-h-52 overflow-y-auto pr-1">
-                  
-                  {
-                    workflowData?.map((step,i)=>{
- const initials = step?.assigned_member?.split(" ")?.map(w => w[0])?.join("");
-                        const statusColor =
-                          step?.step_status === "completed" ? "bg-accent/15 border-accent/20" :
-                          step?.step_status === "in_progress" ? "bg-blue-500/15 border-blue-500/20" :
-                          "bg-white/[0.03] border-white/8";
-                        const numColor =
-                          step?.step_status === "completed" ? "text-accent" :
-                          step?.step_status === "in_progress" ? "text-blue-300" :
-                          "text-white/30";
-
-                        return (
-                          <div
-                            key={step.project_step_id}
-                            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border ${statusColor}`}
-                          >
-                            <div className="w-6 h-6 rounded-full bg-white/5 border border-white/10 flex items-center justify-center flex-shrink-0">
-                              <span className={`text-[10px] font-medium ${numColor}`}>{step?.step_order}</span>
-                            </div>
-                            <span className="text-sm text-white/70 flex-1 truncate">{step?.step_name}</span>
-                            <div
-                              className={`w-7 h-7 rounded-full border flex items-center justify-center flex-shrink-0 ${
-                                step?.step_status === "completed" ? "bg-accent/20 border-accent/30" :
-                                step?.step_status === "in_progress" ? "bg-blue-500/20 border-blue-500/30" :
-                                "bg-white/5 border-white/15"
-                              }`}
-                            >
-                              <span className={`text-[9px] font-medium ${
-                                step?.step_status === "completed" ? "text-accent" :
-                                step?.status === "in_progress" ? "text-blue-300" :
-                                "text-white/40"
-                              }`}>{initials}</span>
-                            </div>
-                          </div>
-                        );
-                    })
-                  }
-
-
-                   
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex gap-3 mt-8">
+              {/* Mode Toggle */}
+              <div className="flex gap-1 p-1 bg-white/[0.04] border border-white/8 rounded-2xl mb-7">
                 <button
-                  onClick={() => setShowAddStepModal(false)}
-                  className="flex-1 py-3 rounded-full border border-white/10 text-sm hover:bg-white/5 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={saveAddStep}
-                  disabled={!newStepName.trim()}
-                  className={`flex-1 py-3 rounded-full text-sm flex items-center justify-center gap-2 transition-colors ${
-                    newStepName.trim()
-                      ? "bg-accent hover:bg-accent/90 shadow-lg shadow-accent/20"
-                      : "bg-white/5 opacity-40 cursor-not-allowed"
+                  onClick={() => { setStepModalMode("add"); setSelectedEditStep(null); setEditStepDraft(null); }}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm transition-all ${
+                    stepModalMode === "add"
+                      ? "bg-accent text-background shadow-md shadow-accent/25"
+                      : "text-white/45 hover:text-white/70"
                   }`}
                 >
                   <Plus className="w-4 h-4" />
-                  {
-                    addingStep ? 'Adding...' : 'Add Step'
-                  }
+                  Add Step
+                </button>
+                <button
+                  onClick={() => { setStepModalMode("edit"); setSelectedEditStep(null); setEditStepDraft(null); }}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm transition-all ${
+                    stepModalMode === "edit"
+                      ? "bg-white/10 text-white border border-white/15"
+                      : "text-white/45 hover:text-white/70"
+                  }`}
+                >
+                  <Pencil className="w-4 h-4" />
+                  Edit Steps
                 </button>
               </div>
+
+              {/* ── ADD STEP MODE ── */}
+              <AnimatePresence mode="wait">
+                {stepModalMode === "add" && (
+                  <motion.div
+                    key="add"
+                    initial={{ opacity: 0, x: -12 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -12 }}
+                    transition={{ duration: 0.2 }}
+                    className="space-y-5"
+                  >
+                    {/* Step Name */}
+                    <div>
+                      <label className="text-[10px] tracking-[0.18em] uppercase text-white/40 mb-2 block">Step Name</label>
+                      <input
+                        type="text"
+                        value={newStepName}
+                        onChange={(e) => setNewStepName(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && saveAddStep()}
+                        placeholder="e.g. Client Review, Final Export..."
+                        className="w-full bg-white/[0.04] border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-accent/50 transition-colors placeholder:text-white/20"
+                        autoFocus
+                      />
+                    </div>
+
+                    {/* Assign Members */}
+                    <div>
+                      <label className="text-[10px] tracking-[0.18em] uppercase text-white/40 mb-3 block">Assign Members</label>
+                      <div className="space-y-2">
+                        {teamMembers?.map((member) => {
+                          const selected = newStepAssigneeIds.includes(member.member_id);
+                          return (
+                            <button
+                              key={member.member_id}
+                              type="button"
+                              onClick={() => setNewStepAssigneeIds(prev =>
+                                selected ? prev.filter(id => id !== member.member_id) : [...prev, member.member_id]
+                              )}
+                              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border transition-all text-left ${
+                                selected
+                                  ? "border-accent/40 bg-accent/[0.07]"
+                                  : "border-white/[0.07] bg-white/[0.02] hover:border-white/15 hover:bg-white/[0.04]"
+                              }`}
+                            >
+                            
+                            
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm text-white/80 leading-tight">{member.full_name}</p>
+                                <p className="text-[11px] text-white/35 leading-tight mt-0.5">{member.role}</p>
+                              </div>
+                              <div className={`w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0 border transition-colors ${
+                                selected ? "bg-accent border-accent" : "border-white/20 bg-transparent"
+                              }`}>
+                                {selected && <Check className="w-3 h-3 text-background" />}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                      {newStepAssigneeIds.length > 0 && (
+                        <p className="text-xs text-accent/70 mt-2 flex items-center gap-1.5">
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          {newStepAssigneeIds.length} member{newStepAssigneeIds.length > 1 ? "s" : ""} selected
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Venue */}
+                    <div>
+                      <label className="text-[10px] tracking-[0.18em] uppercase text-white/40 mb-2 block">Venue / Location</label>
+                      <div className="relative">
+                        <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/25 pointer-events-none" />
+                        <input
+                          type="text"
+                          value={newStepVenue}
+                          onChange={(e) => setNewStepVenue(e.target.value)}
+                          placeholder="e.g. Riverside Gardens, California"
+                          className="w-full bg-white/[0.04] border border-white/10 rounded-xl pl-10 pr-4 py-3 text-sm focus:outline-none focus:border-accent/50 transition-colors placeholder:text-white/20"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Scheduled Date & Time */}
+                    <div>
+                      <label className="text-[10px] tracking-[0.18em] uppercase text-white/40 mb-2 block">Scheduled Date & Time</label>
+                      <div className="relative">
+                        <CalendarClock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/25 pointer-events-none" />
+                        <input
+                          type="datetime-local"
+                          value={newStepScheduledTime}
+                          onChange={(e) => setNewStepScheduledTime(e.target.value)}
+                          min={new Date(Date.now() + 86400000).toISOString().slice(0, 16)}
+                          className="w-full bg-white/[0.04] border border-white/10 rounded-xl pl-10 pr-4 py-3 text-sm focus:outline-none focus:border-accent/50 transition-colors [color-scheme:dark]"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Step Order */}
+                    <div>
+                      <label className="text-[10px] tracking-[0.18em] uppercase text-white/40 mb-2 block">Step Order</label>
+                      <input
+                        type="number"
+                        min={1}
+                        max={workflowData?.length + 1}
+                        value={newStepOrder}
+                        onChange={(e) => {
+                          const val = e.target.value === "" ? "" : Math.min(workflowData?.length + 1, Math.max(1, Number(e.target.value)));
+                          setNewStepOrder(val === "" ? "" : Number(val));
+                        }}
+                        placeholder={`1 – ${workflowData?.length + 1}`}
+                        className="w-full bg-white/[0.04] border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-accent/50 transition-colors"
+                      />
+                      <p className="text-[11px] text-white/30 mt-1.5">Position 1 – {workflowData?.length + 1}</p>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex gap-3 pt-1">
+                      <button
+                        onClick={() => setShowAddStepModal(false)}
+                        className="flex-1 py-3 rounded-full border border-white/10 text-sm hover:bg-white/5 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={saveAddStep}
+                        disabled={!newStepName.trim()}
+                        className={`flex-1 py-3 rounded-full text-sm flex items-center justify-center gap-2 transition-colors ${
+                          newStepName.trim()
+                            ? "bg-accent hover:bg-accent/90 shadow-lg shadow-accent/20"
+                            : "bg-white/5 opacity-40 cursor-not-allowed"
+                        }`}
+                      >
+                        <Plus className="w-4 h-4" />
+                        {addingStep?'Adding':'Add Step'}
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+
+                {/* ── EDIT STEPS MODE ── */}
+                {stepModalMode === "edit" && (
+                  <motion.div
+                    key="edit"
+                    initial={{ opacity: 0, x: 12 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 12 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    {/* Step list */}
+                    {!selectedEditStep && (
+                      <div>
+                        <p className="text-[11px] text-white/30 mb-4">{projectSteps.length} steps · tap one to edit</p>
+                        <div className="space-y-2">
+                          {projectSteps.map((step) => (
+                            <button
+                              key={step.project_step_id}
+                              onClick={() => { setSelectedEditStep(step); setEditStepDraft({ ...step }); }}
+                              className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl border border-white/[0.07] bg-white/[0.025] hover:border-accent/30 hover:bg-white/[0.05] transition-all text-left group"
+                            >
+                              {/* Order badge */}
+                              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium flex-shrink-0 ${
+                                step.step_status === "completed" ? "bg-accent/20 text-accent border border-accent/30" :
+                                step.step_status === "in_progress" ? "bg-blue-500/20 text-blue-300 border border-blue-500/30" :
+                                "bg-white/5 text-white/40 border border-white/10"
+                              }`}>
+                                {step.step_order}
+                              </div>
+
+                              {/* Info */}
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-0.5">
+                                  <p className="text-sm text-white/85 capitalize">{step.step_name}</p>
+                                  <span className={`px-2 py-0.5 rounded-full text-[10px] leading-tight ${
+                                    step.step_status === "completed" ? "bg-accent/15 text-accent border border-accent/20" :
+                                    step.step_status === "in_progress" ? "bg-blue-500/15 text-blue-300 border border-blue-500/20" :
+                                    "bg-white/5 text-white/35 border border-white/8"
+                                  }`}>
+                                    {step.step_status.replace("_", " ")}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                  {step.venue && (
+                                    <span className="text-[11px] text-white/30 flex items-center gap-1 truncate max-w-[140px]">
+                                      <MapPin className="w-2.5 h-2.5 flex-shrink-0" />
+                                      {step.venue}
+                                    </span>
+                                  )}
+                                  {step.scheduled_time && (
+                                    <span className="text-[11px] text-white/25">
+                                      {format(new Date(step.scheduled_time), "MMM dd")}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Avatars */}
+                              <div className="flex items-center -space-x-1.5 flex-shrink-0 mr-1">
+                                {step.assigned_members.slice(0, 3).map((m) => (
+                                  <div key={m.id} className={`w-6 h-6 rounded-full border-2 border-[#0e0e0e] flex items-center justify-center text-[9px] font-medium ${
+                                    m.color === "accent" ? "bg-accent/30 text-accent" :
+                                    m.color === "blue" ? "bg-blue-500/30 text-blue-300" :
+                                    m.color === "purple" ? "bg-purple-500/30 text-purple-300" :
+                                    "bg-orange-500/30 text-orange-300"
+                                  }`}>
+                                    {getInitials(m.full_name)}
+                                  </div>
+                                ))}
+                              </div>
+
+                              <ArrowLeft className="w-3.5 h-3.5 rotate-180 text-white/20 group-hover:text-white/50 transition-colors flex-shrink-0" />
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Edit form for selected step */}
+                    {selectedEditStep && editStepDraft && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="space-y-5"
+                      >
+                        {/* Back + Step identity */}
+                        <div className="flex items-center gap-3 -mt-1">
+                          <button
+                            onClick={() => { setSelectedEditStep(null); setEditStepDraft(null); }}
+                            className="w-8 h-8 flex items-center justify-center rounded-xl border border-white/10 hover:bg-white/5 transition-all flex-shrink-0"
+                          >
+                            <ArrowLeft className="w-3.5 h-3.5" />
+                          </button>
+                          <div>
+                            <p className="text-sm text-white/70 capitalize leading-tight">{selectedEditStep.step_name}</p>
+                            <p className="text-[11px] text-white/30 mt-0.5">
+                              Step #{selectedEditStep.step_order} · ID {selectedEditStep.project_step_id}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Step Name */}
+                        <div>
+                          <label className="text-[10px] tracking-[0.18em] uppercase text-white/40 mb-2 block">Step Name</label>
+                          <input
+                            type="text"
+                            value={editStepDraft.step_name}
+                            onChange={(e) => setEditStepDraft(prev => prev ? { ...prev, step_name: e.target.value } : null)}
+                            className="w-full bg-white/[0.04] border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-accent/50 transition-colors"
+                          />
+                        </div>
+
+                        {/* Status */}
+                        <div>
+                          <label className="text-[10px] tracking-[0.18em] uppercase text-white/40 mb-2 block">Status</label>
+                          <div className="grid grid-cols-3 gap-2">
+                            {(["pending", "in_progress", "completed"] as const).map((s) => (
+                              <button
+                                key={s}
+                                onClick={() => setEditStepDraft(prev => prev ? {
+                                  ...prev,
+                                  step_status: s,
+                                  completed_at: s === "completed" ? new Date().toISOString() : null,
+                                } : null)}
+                                className={`py-2.5 rounded-xl text-xs border capitalize transition-all ${
+                                  editStepDraft.step_status === s
+                                    ? s === "completed" ? "bg-accent/15 border-accent/40 text-accent" :
+                                      s === "in_progress" ? "bg-blue-500/15 border-blue-500/40 text-blue-300" :
+                                      "bg-white/10 border-white/25 text-white/80"
+                                    : "border-white/8 bg-transparent text-white/30 hover:border-white/15 hover:text-white/50"
+                                }`}
+                              >
+                                {s.replace("_", " ")}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Assign Members */}
+                        <div>
+                          <label className="text-[10px] tracking-[0.18em] uppercase text-white/40 mb-3 block">Assigned Members</label>
+                          <div className="space-y-2">
+                            {teamMembers?.map((member) => {
+                              const selected = editStepDraft.assigned_member_ids.includes(member.member_id);
+                              return (
+                                <button
+                                  key={member.member_id}
+                                  type="button"
+                                  onClick={() => {
+                                    const newIds = selected
+                                      ? editStepDraft.assigned_member_ids.filter(id => id !== member.member_id)
+                                      : [...editStepDraft.assigned_member_ids, member.member_id];
+                                    const newMembers = teamMembers?.filter(m => newIds.includes(m.member_id));
+                                    setEditStepDraft(prev => prev ? { ...prev, assigned_member_ids: newIds, assigned_members: newMembers } : null);
+                                  }}
+                                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border transition-all text-left ${
+                                    selected
+                                      ? "border-accent/40 bg-accent/[0.07]"
+                                      : "border-white/[0.07] bg-white/[0.02] hover:border-white/15 hover:bg-white/[0.04]"
+                                  }`}
+                                >
+                                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-medium flex-shrink-0 ${
+                                    member.color === "accent" ? "bg-accent/25 text-accent" :
+                                    member.color === "blue" ? "bg-blue-500/25 text-blue-300" :
+                                    member.color === "purple" ? "bg-purple-500/25 text-purple-300" :
+                                    "bg-orange-500/25 text-orange-300"
+                                  }`}>
+                                    {getInitials(member.full_name)}
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm text-white/80 leading-tight">{member.full_name}</p>
+                                    <p className="text-[11px] text-white/35 leading-tight mt-0.5">{member.role}</p>
+                                  </div>
+                                  <div className={`w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0 border transition-colors ${
+                                    selected ? "bg-accent border-accent" : "border-white/20 bg-transparent"
+                                  }`}>
+                                    {selected && <Check className="w-3 h-3 text-background" />}
+                                  </div>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* Venue */}
+                        <div>
+                          <label className="text-[10px] tracking-[0.18em] uppercase text-white/40 mb-2 block">Venue / Location</label>
+                          <div className="relative">
+                            <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/25 pointer-events-none" />
+                            <input
+                              type="text"
+                              value={editStepDraft.venue}
+                              onChange={(e) => setEditStepDraft(prev => prev ? { ...prev, venue: e.target.value } : null)}
+                              placeholder="e.g. Riverside Gardens, California"
+                              className="w-full bg-white/[0.04] border border-white/10 rounded-xl pl-10 pr-4 py-3 text-sm focus:outline-none focus:border-accent/50 transition-colors placeholder:text-white/20"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Scheduled Date & Time */}
+                        <div>
+                          <label className="text-[10px] tracking-[0.18em] uppercase text-white/40 mb-2 block">Scheduled Date & Time</label>
+                          <div className="relative">
+                            <CalendarClock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/25 pointer-events-none" />
+                            <input
+                              type="datetime-local"
+                              value={editStepDraft.scheduled_time ? editStepDraft.scheduled_time.slice(0, 16) : ""}
+                              onChange={(e) => setEditStepDraft(prev => prev ? { ...prev, scheduled_time: e.target.value } : null)}
+                              className="w-full bg-white/[0.04] border border-white/10 rounded-xl pl-10 pr-4 py-3 text-sm focus:outline-none focus:border-accent/50 transition-colors [color-scheme:dark]"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex gap-3 pt-1">
+                          <button
+                            onClick={() => { setSelectedEditStep(null); setEditStepDraft(null); }}
+                            className="flex-1 py-3 rounded-full border border-white/10 text-sm hover:bg-white/5 transition-colors"
+                          >
+                            Back
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (!editStepDraft) return;
+                              handleUpdateStep(editStepDraft)
+                              setSelectedEditStep(null);
+                              setEditStepDraft(null);
+                            }}
+                            className="flex-1 py-3 rounded-full text-sm flex items-center justify-center gap-2 bg-accent hover:bg-accent/90 shadow-lg shadow-accent/20 transition-colors"
+                          >
+                            <Save className="w-4 h-4" />
+                        
+                            {
+                              updatingStep?'Saving...':"Save Changes"
+                            }
+                          </button>
+                        </div>
+                      </motion.div>
+                    )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </motion.div>
           </motion.div>
         )}
