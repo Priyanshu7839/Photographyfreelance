@@ -1,5 +1,6 @@
 import { motion, AnimatePresence } from "motion/react";
 import { useState } from "react";
+import { submitEnquiry } from "../../Utils/Apicalls";
 import { Link, useNavigate } from "react-router";
 import { Camera, Video, User, ArrowRight, ArrowLeft, Check, TrendingUp } from "lucide-react";
 
@@ -48,9 +49,19 @@ export default function BookingPage() {
     }
   };
 
-  const handleSubmit = () => {
-    console.log("Form submitted:", formData);
-    setCurrentStep(totalSteps + 1);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
+  const handleSubmit = async () => {
+    setSubmitting(true);
+    setSubmitError("");
+    try {
+      await submitEnquiry(formData);
+      setCurrentStep(totalSteps + 1);
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : "Unable to send enquiry.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const projectTypes = [
@@ -517,13 +528,16 @@ export default function BookingPage() {
                 </button>
               )}
               {currentStep === totalSteps && (
+                <>
+                {submitError && <p className="text-sm text-red-300" role="alert">{submitError}</p>}
                 <button
                   onClick={handleSubmit}
-                  disabled={!formData.budget}
+                  disabled={!formData.budget || submitting}
                   className="flex-1 bg-accent px-6 md:px-8 py-3 md:py-4 text-sm md:text-base hover:bg-accent/90 transition-colors rounded-full flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <span className="hidden sm:inline">Submit Project</span><span className="sm:hidden">Submit</span> <Check className="w-4 h-4 md:w-5 md:h-5" />
+                  <span className="hidden sm:inline">{submitting ? "Sending..." : "Submit Project"}</span><span className="sm:hidden">{submitting ? "Sending..." : "Submit"}</span> <Check className="w-4 h-4 md:w-5 md:h-5" />
                 </button>
+                </>
               )}
             </motion.div>
           )}

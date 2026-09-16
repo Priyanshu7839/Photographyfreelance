@@ -32,7 +32,13 @@ export default function Home() {
 
   const [currentSlide, setCurrentSlide] = useState(0);
 
-const isMobile = window.matchMedia("(max-width: 600px)").matches;
+  const [isMobile, setIsMobile] = useState(() => window.matchMedia("(max-width: 600px)").matches);
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 600px)");
+    const update = () => setIsMobile(media.matches);
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
 
   const heroSlides = [
     {
@@ -104,11 +110,11 @@ const isMobile = window.matchMedia("(max-width: 600px)").matches;
         animate={{ y: 0 }}
         className=" w-screen top-0 left-0 right-0 z-50 px-4 md:px-6 py-4 md:py-6 flex items-center justify-between backdrop-blur-sm bg-background/80"
       >
-        <Menu className="hidden max-sm:block" onClick={()=>{setMenuOpen(!MenuOpen)}}/>
+        <button type="button" aria-label="Toggle navigation menu" aria-expanded={MenuOpen} className="hidden max-sm:block p-2" onClick={() => setMenuOpen((open) => !open)}><Menu /></button>
             {MenuOpen &&<motion.div 
              initial={{ y: -100 }}
         animate={{ y: 0 }}
-            className="flex flex-col gap-2  p-3 rounded-xl text-accent absolute top-full bg-white">
+            className="flex flex-col gap-2 p-3 rounded-xl text-accent absolute top-full left-4 bg-white shadow-xl" role="navigation">
           <a onClick={()=>{setMenuOpen(!MenuOpen)}} href="#portfolio" className="block text-sm opacity-70 hover:opacity-100  transition-opacity">Portfolio</a>
           <a onClick={()=>{setMenuOpen(!MenuOpen)}} href="#services" className="block text-sm opacity-70 hover:opacity-100 transition-opacity">Services</a>
           <a onClick={()=>{setMenuOpen(!MenuOpen)}} href="#process" className="block text-sm opacity-70 hover:opacity-100 transition-opacity">Process</a>

@@ -80,12 +80,17 @@ import {
   getContractStatus,
   getInvoice,
   getMoodboardAssets,
+  getVendorMedia,
+  getVendors,
+  createVendor,
+  updateVendorMediaConsent,
   getMoodboardDiscussions,
   getMoodboardSongs,
   getProductionOverview,
   getProductionSetup,
   getProjectStepsForTravel,
   getTeamMembers,
+  resetClientPassword,
   getTravelData,
   getTravelDiscussions,
   signContract,
@@ -635,12 +640,20 @@ export default function ProjectDetail() {
   );
   const [travelConfig, setTravelConfig] = useState(travelSettings);
   const [showVendorModal, setShowVendorModal] = useState(false);
+  // Kept only while the legacy vendor markup remains unreachable below; live UI uses vendorConsent.
   const [vendorAgreed, setVendorAgreed] = useState(false);
-  const [selectedVendorCollection, setSelectedVendorCollection] = useState<
-    (typeof vendorCollections)[0] | null
-  >(null);
+  const [vendorConsent, setVendorConsent] = useState<boolean | null>(null);
+  const [savingVendorConsent, setSavingVendorConsent] = useState(false);
+  const [vendorMedia, setVendorMedia] = useState<any[]>([]);
+  const [vendorMediaLoading, setVendorMediaLoading] = useState(false);
+  const [vendorMediaError, setVendorMediaError] = useState("");
+  const [vendors, setVendors] = useState<any[]>([]);
+  const [selectedVendorCollection, setSelectedVendorCollection] = useState<any>(null);
   const [selectedVendorImage, setSelectedVendorImage] = useState<any>(null);
+  const [downloadingVendorId, setDownloadingVendorId] = useState<string | null>(null);
   const [assetView, setAssetView] = useState<"client" | "vendor">("client");
+  const vendorAccessButtonRef = useRef<HTMLButtonElement>(null);
+  const vendorConsentAcceptRef = useRef<HTMLButtonElement>(null);
 
   const filteredAssets = mockAssets.filter((asset) => {
     const matchesSet = asset.set === setFilter;
@@ -653,9 +666,11 @@ export default function ProjectDetail() {
 
 
 
-    const user = JSON.parse(
+const user = JSON.parse(
   localStorage.getItem("user") || "{}"
 );
+const isClientUser = user.role === "client" || user.user_type === "client";
+const isAdminUser = user.role === "admin" || user.role === "superadmin";
 
 
 
@@ -756,6 +771,93 @@ const toggleGearForCrew = (
 
     fetchClientHeader();
   }, [clientId]);
+
+  useEffect(() => {
+    if (clientData) setVendorConsent(Boolean(clientData.vendor_media_consent));
+  }, [clientData]);
+
+  useEffect(() => {
+    if (showVendorModal) {
+      vendorConsentAcceptRef.current?.focus();
+    } else {
+      vendorAccessButtonRef.current?.focus();
+    }
+  }, [showVendorModal]);
+
+  const fetchVendorMedia = async () => {
+    setVendorMediaLoading(true);
+    setVendorMediaError("");
+    try {
+      const response = await getVendorMedia(clientId);
+      setVendorMedia(response.data || []);
+    } catch (error: any) {
+      setVendorMediaError(error.message || "Unable to load vendor media.");
+    } finally {
+      setVendorMediaLoading(false);
+    }
+  };
+
+  const fetchVendors = async () => {
+    try {
+      const response = await getVendors(clientId);
+      setVendors(response.data || []);
+    } catch (error: any) {
+      toast.error(error.message || "Unable to load vendors.");
+    }
+  };
+
+  const handleVendorConsent = async (accepted: boolean) => {
+    if (!accepted) {
+      setShowVendorModal(false);
+      setAssetView("client");
+      return;
+    }
+    setSavingVendorConsent(true);
+    try {
+      await updateVendorMediaConsent(clientId, true);
+      setVendorConsent(true);
+      setShowVendorModal(false);
+      await fetchVendorMedia();
+      toast.success("Vendor media access enabled");
+    } catch (error: any) {
+      toast.error(error.message || "Unable to save consent.");
+    } finally {
+      setSavingVendorConsent(false);
+    }
+  };
+
+  const handleCreateVendor = async (vendor: { vendor_name: string; vendor_type: string }) => {
+    const response = await createVendor(clientId, vendor);
+    const created = response.data;
+    setVendors((previous) => [...previous, created]);
+    toast.success("Vendor created");
+    return created;
+  };
+
+  const handleVendorDownloadAll = async (vendor: any) => {
+    const files = vendor?.files || [];
+    if (!files.length) return;
+    setDownloadingVendorId(vendor.vendor_id);
+    try {
+      // Queue downloads so the browser is never asked to open a burst of tabs.
+      // Each file endpoint enforces access and returns a short-lived download URL.
+      for (const file of files) {
+        const response = await downloadFile(file.file_id);
+        const link = document.createElement("a");
+        link.href = response.download_url;
+        link.download = file.file_name || "vendor-media";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        await new Promise((resolve) => window.setTimeout(resolve, 250));
+      }
+      toast.success(`${files.length} file${files.length === 1 ? "" : "s"} queued for download`);
+    } catch (error: any) {
+      toast.error(error.message || "Unable to download all vendor files.");
+    } finally {
+      setDownloadingVendorId(null);
+    }
+  };
 
   const handleWorkflowAction = async (action,step_id) => {
 
@@ -995,7 +1097,8 @@ const [
       const response =
         await assignGears(
           clientId,
-          member.gears_using
+          member.gears_using,
+          member.member_id
         );
 
       toast.success(
@@ -1089,7 +1192,7 @@ const fetchAllGears =
   const handleAddSong =
   async () => {
 
-if(user.role ){
+if(user.user_type !== "client" ){
   toast.error('Only clients can add a song')
   return;
 }
@@ -1163,7 +1266,7 @@ if(user.role ){
 
   const handleSaveNotes = async () => {
 
-    if(user.role){
+    if(user.user_type !== "client"){
       toast.error("Only clients can Add Notes")
       return; 
     }
@@ -1309,12 +1412,17 @@ console.log(response.data)
 const [uploadProgress, setUploadProgress] =
   useState({});
 
+useEffect(() => {
+  if (showUploadModal && !moodboardModal) fetchVendors();
+}, [showUploadModal, moodboardModal, clientId]);
+
 const handleUploadFiles =
   async (
     files,
     clientId,
     variantType,
-    vendorshared = false
+    vendorshared = false,
+    vendorId = null
   ) => {
     for (const item of files) {
       try {
@@ -1360,7 +1468,8 @@ const handleUploadFiles =
             );
           },
 
-          vendorshared
+          vendorshared,
+          vendorId
         );
 
 
@@ -1584,6 +1693,10 @@ const fetchMoodboardAssets =
 
 
     const [showEditModal, setShowEditModal] = useState(false);
+  const [showClientPasswordModal, setShowClientPasswordModal] = useState(false);
+  const [adminPassword, setAdminPassword] = useState("");
+  const [temporaryClientPassword, setTemporaryClientPassword] = useState("");
+  const [resettingClientPassword, setResettingClientPassword] = useState(false);
   const [editDraft, setEditDraft] = useState({});
   const [savingEdit,setsavingEdit] = useState(false);
 
@@ -1601,6 +1714,21 @@ const fetchMoodboardAssets =
   function openEditModal() {
     setShowEditModal(true);
   }
+
+  const revealClientPassword = async () => {
+    if (!adminPassword) return toast.error("Enter your admin password to continue");
+    setResettingClientPassword(true);
+    try {
+      const response = await resetClientPassword(clientId, adminPassword);
+      setTemporaryClientPassword(response.temporary_password);
+      setAdminPassword("");
+      toast.success("New client password generated");
+    } catch (error) {
+      toast.error(error.message);
+    } finally {
+      setResettingClientPassword(false);
+    }
+  };
 
  
   const saveEditModal =
@@ -2451,7 +2579,6 @@ useEffect(() => {
             {[
               "overview",
               "assets",
-              ,
               "workflow",
               "moodboard",
               "gears",
@@ -2671,17 +2798,20 @@ useEffect(() => {
                         }
                       </p>
                     </div>
-                    <div className="p-4 bg-white/5 rounded-xl">
-                      <p className="text-sm opacity-60 mb-2">
-                        Client Login Password
-                      </p>
-                      <p className="text-md">
-                        {
-                          overviewData?.client_details
-                            ?.password
-                        }
-                      </p>
-                    </div>
+                    {(user.role === "admin" || user.role === "superadmin") && (
+                      <div className="p-4 bg-white/5 rounded-xl">
+                        <p className="text-sm opacity-60 mb-2">Client Login Password</p>
+                        <button
+                          type="button"
+                          onClick={() => { setTemporaryClientPassword(""); setAdminPassword(""); setShowClientPasswordModal(true); }}
+                          className="w-full flex items-center justify-between rounded-lg border border-white/10 bg-black/10 px-3 py-2 text-left hover:border-accent/40 transition-colors"
+                        >
+                          <span className="tracking-[0.25em] text-sm">••••••••••••</span>
+                          <Eye className="w-4 h-4 text-accent" />
+                        </button>
+                        <p className="mt-2 text-[11px] opacity-40">Admin verification is required to generate a new password.</p>
+                      </div>
+                    )}
                   </div>
                 </div>
                   </>
@@ -2712,9 +2842,14 @@ useEffect(() => {
                     <span>Client Assets</span>
                   </button>
                   <button
+                    ref={vendorAccessButtonRef}
                     onClick={() => {
                       setAssetView("vendor");
-                      setShowVendorModal(true);
+                      if (isClientUser && vendorConsent === false) {
+                        setShowVendorModal(true);
+                        return;
+                      }
+                      fetchVendorMedia();
                     }}
                     className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm transition-all ${
                       assetView === "vendor"
@@ -2752,7 +2887,7 @@ useEffect(() => {
                         </div>
 
                       
-                    {user.role &&    <button 
+                    {(user.role === "admin" || user.role === "superadmin") && <button
                          onClick={() => {
                           setShowUploadModal(true)
                       
@@ -2861,7 +2996,43 @@ useEffect(() => {
                 )}
 
                 {/* Vendor Media Access View */}
-                {assetView === "vendor" && vendorAgreed && (
+                {assetView === "vendor" && (!isClientUser || vendorConsent === true) && (
+                  <div className="space-y-5">
+                    {!selectedVendorCollection ? (
+                      <>
+                        <section className="flex flex-col gap-4 rounded-2xl border border-accent/20 bg-gradient-to-br from-accent/10 via-white/[0.03] to-transparent p-5 sm:flex-row sm:items-end sm:justify-between">
+                          <div>
+                            <p className="mb-1 text-xs font-medium uppercase tracking-[0.18em] text-accent">Shared media</p>
+                            <h3 className="text-xl">Vendor Media Access</h3>
+                            <p className="mt-1 text-sm text-white/65">Files grouped by the vendors they were shared with.</p>
+                          </div>
+                          <button onClick={fetchVendorMedia} disabled={vendorMediaLoading} className="rounded-xl border border-white/10 bg-black/15 px-3 py-2 text-sm hover:border-accent/50 disabled:opacity-50">
+                            {vendorMediaLoading ? "Refreshing…" : "Refresh"}
+                          </button>
+                        </section>
+                        {vendorMediaLoading ? (
+                          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">{[0, 1, 2].map((item) => <ProjectDetailCardShimmer key={item} className="h-36" />)}</div>
+                        ) : vendorMediaError ? (
+                          <div role="alert" className="rounded-2xl border border-red-400/25 bg-red-400/10 p-5"><p className="text-sm text-red-100">{vendorMediaError}</p><button onClick={fetchVendorMedia} className="mt-3 text-sm text-accent underline underline-offset-4">Try again</button></div>
+                        ) : vendorMedia.length === 0 ? (
+                          <div className="rounded-2xl border border-dashed border-white/15 bg-white/[0.025] px-6 py-12 text-center"><Share2 className="mx-auto mb-3 h-6 w-6 text-accent" /><h4 className="text-base">No vendor media yet</h4><p className="mx-auto mt-1 max-w-sm text-sm text-white/55">Shared files will appear here once they have been assigned to a vendor.</p></div>
+                        ) : (
+                          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                            {vendorMedia.filter((vendor) => vendor.file_count > 0).map((vendor, index) => (
+                              <motion.article key={vendor.vendor_id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.04 }} className="group rounded-2xl border border-white/10 bg-white/[0.045] p-5 transition-colors hover:border-accent/45 hover:bg-white/[0.07]">
+                                <div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="truncate text-base">{vendor.vendor_name}</p><p className="mt-1 text-xs text-white/50">{vendor.vendor_type || "Vendor"} · {vendor.file_count} file{vendor.file_count === 1 ? "" : "s"}</p></div><div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-accent/25 bg-accent/10"><Share2 className="h-4 w-4 text-accent" /></div></div>
+                                <div className="mt-5 flex gap-2"><button onClick={() => setSelectedVendorCollection(vendor)} className="flex-1 rounded-xl border border-white/10 px-3 py-2 text-sm hover:border-accent/45">Open</button><button onClick={() => handleVendorDownloadAll(vendor)} disabled={downloadingVendorId === vendor.vendor_id} className="inline-flex items-center gap-1.5 rounded-xl bg-accent px-3 py-2 text-sm text-background hover:bg-accent/90 disabled:cursor-wait disabled:opacity-60"><Download className="h-4 w-4" />{downloadingVendorId === vendor.vendor_id ? "Preparing…" : "All"}</button></div>
+                              </motion.article>
+                            ))}
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <section className="space-y-5"><div className="flex flex-wrap items-center justify-between gap-3"><div><button onClick={() => setSelectedVendorCollection(null)} className="mb-2 inline-flex items-center gap-1.5 text-sm text-white/60 hover:text-white"><ArrowLeft className="h-4 w-4" />All vendors</button><h3 className="text-xl">{selectedVendorCollection.vendor_name}</h3><p className="text-sm text-white/55">{selectedVendorCollection.file_count} shared file{selectedVendorCollection.file_count === 1 ? "" : "s"}</p></div><button onClick={() => handleVendorDownloadAll(selectedVendorCollection)} disabled={downloadingVendorId === selectedVendorCollection.vendor_id} className="inline-flex items-center gap-2 rounded-xl bg-accent px-4 py-2.5 text-sm text-background hover:bg-accent/90 disabled:cursor-wait disabled:opacity-60"><Download className="h-4 w-4" />{downloadingVendorId === selectedVendorCollection.vendor_id ? "Preparing…" : "Download all"}</button></div><div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">{selectedVendorCollection.files?.map((file, index) => <motion.button key={file.file_id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: index * 0.03 }} onClick={() => handleDownload(file.file_id)} className="group relative aspect-square overflow-hidden rounded-xl border border-white/10 bg-white/[0.04] text-left hover:border-accent/50">{file.file_type === "video" ? <div className="flex h-full flex-col items-center justify-center gap-2 p-3 text-center text-white/65"><Video className="h-7 w-7 text-accent" /><span className="text-xs">Video</span></div> : file.preview_url ? <img src={file.preview_url} alt={file.file_name || "Shared media"} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" /> : <div className="flex h-full items-center justify-center"><Image className="h-7 w-7 text-white/35" /></div>}<span className="absolute inset-x-0 bottom-0 truncate bg-black/70 px-2 py-2 text-xs">{file.file_name}</span></motion.button>)}</div></section>
+                    )}
+                  </div>
+                )}
+                {false && (
                   <div className="space-y-6">
                     {/* Vendor Collections Grid */}
                     {!selectedVendorCollection && (
@@ -3497,7 +3668,7 @@ useEffect(() => {
                 <div className="flex items-center justify-between w-full mb-4">
                     <h3 className="text-xl ">Reference Materials</h3>
 
-                   {!user.role &&    <button 
+                   {(user.role === "admin" || user.role === "superadmin") && <button
                          onClick={() => {setShowUploadModal(true)
     setMoodboardModal(true)
 
@@ -3949,8 +4120,8 @@ useEffect(() => {
                 className="space-y-6"
               >
                 {(() => {
-                  const totalMiles = travelData?.reduce((s, l) => s + l.travel_distance, 0);
-                  const billableMiles = Math.max(0, totalMiles - travelConfig.freeAllowanceMiles);
+                  const totalMiles = (travelData || []).reduce((sum, location) => sum + Number(location.travel_distance || 0), 0);
+                  const billableMiles = (travelData || []).reduce((sum, location) => sum + Math.max(Number(location.travel_distance || 0) - travelConfig.freeAllowanceMiles, 0), 0);
                   const travelFee = parseFloat((billableMiles * travelConfig.ratePerMile).toFixed(2));
 
                   return (
@@ -4203,7 +4374,7 @@ useEffect(() => {
                               <div className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center">
                                 <Route className="w-3.5 h-3.5 opacity-50" />
                               </div>
-                              <span className="text-sm opacity-70">Total miles ({travelLocations.length} venues)</span>
+                              <span className="text-sm opacity-70">Total miles ({travelData?.length || 0} venues)</span>
                             </div>
                             <span className="text-sm tabular-nums">{totalMiles} mi</span>
                           </div>
@@ -4261,7 +4432,7 @@ useEffect(() => {
                         {/* Formula footer */}
                         <div className="px-6 py-3 border-t border-white/10 bg-white/[0.02]">
                           <p className="text-xs opacity-30 font-mono">
-                            ({totalMiles} mi − {travelConfig.freeAllowanceMiles} mi) × ${travelConfig.ratePerMile.toFixed(2)}/mi = <span className="text-accent/60">${travelFee.toFixed(2)}</span>
+                            Per trip: max(0, miles − {travelConfig.freeAllowanceMiles}) × ${travelConfig.ratePerMile.toFixed(2)}/mi = <span className="text-accent/60">${travelFee.toFixed(2)}</span>
                           </p>
                         </div>
                       </div>
@@ -4848,7 +5019,7 @@ useEffect(() => {
                               <span className="text-xs text-accent opacity-80">Signed by client</span>
                             </div>
                           </div>
-                        ) : (
+                        ) : user.user_type === "client" ? (
                           <div className="space-y-4">
                             {/* Sign Mode Toggle */}
                            
@@ -4882,6 +5053,8 @@ useEffect(() => {
                             </button>
                             <p className="text-xs opacity-40 text-center">By signing, you agree to all terms and conditions outlined in this contract.</p>
                           </div>
+                        ) : (
+                          <p className="rounded-xl border border-white/10 bg-white/[0.03] p-4 text-sm opacity-55">Only the client can sign this contract from their secure account.</p>
                         )}
                       </div>
                     </div>
@@ -5001,16 +5174,19 @@ useEffect(() => {
         open={showUploadModal}
         moodboardModal={moodboardModal}
         onClose={() => setShowUploadModal(false)}
-        onUpload={(files, editedStatus, isVendor) => {
+        vendors={vendors}
+        canCreateVendor={isAdminUser}
+        onCreateVendor={handleCreateVendor}
+        onUpload={(files, editedStatus, isVendor, vendorId) => {
           console.log("Uploading", files.length, "files as", editedStatus, isVendor ? "(vendor)" : "");
           console.log(files)
-          moodboardModal ? handleUploadFiles(files,clientId,'moodboard',false) :handleUploadFiles(files,clientId,editedStatus,isVendor)
+          moodboardModal ? handleUploadFiles(files,clientId,'moodboard',false) :handleUploadFiles(files,clientId,editedStatus,isVendor, vendorId)
           
           
         }}
       />
 
-      <UploadProgressToast
+  <UploadProgressToast
   uploadProgress={
     uploadProgress
   }
@@ -5018,6 +5194,47 @@ useEffect(() => {
     setUploadProgress({})
   }
 />
+
+  {/* Secure client-password reset/reveal */}
+  <AnimatePresence>
+    {showClientPasswordModal && (
+      <motion.div
+        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+        className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-md flex items-center justify-center p-4"
+        onClick={() => setShowClientPasswordModal(false)}
+      >
+        <motion.div
+          initial={{ scale: 0.95, y: 16 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 16 }}
+          onClick={(event) => event.stopPropagation()}
+          className="w-full max-w-md rounded-3xl border border-white/10 bg-[#0e0e0e] p-7 shadow-2xl"
+        >
+          <div className="flex items-start justify-between gap-4 mb-6">
+            <div><p className="text-xs tracking-[0.18em] uppercase text-accent mb-2">Secure action</p><h2 className="text-xl">Reset client password</h2></div>
+            <button onClick={() => setShowClientPasswordModal(false)} className="w-9 h-9 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center"><X className="w-4 h-4" /></button>
+          </div>
+          {temporaryClientPassword ? (
+            <div className="space-y-5">
+              <p className="text-sm opacity-65">Copy this temporary password now. It will not be available again after this window is closed.</p>
+              <div className="flex items-center justify-between gap-3 rounded-xl border border-accent/30 bg-accent/10 px-4 py-3">
+                <code className="break-all text-base text-accent">{temporaryClientPassword}</code>
+                <button type="button" onClick={() => { navigator.clipboard.writeText(temporaryClientPassword); toast.success("Password copied"); }} className="shrink-0 text-xs text-accent hover:text-white">Copy</button>
+              </div>
+              <button onClick={() => setShowClientPasswordModal(false)} className="w-full py-3 rounded-full bg-accent text-sm hover:bg-accent/90">Done</button>
+            </div>
+          ) : (
+            <div className="space-y-5">
+              <p className="text-sm opacity-65">Enter your own administrator password. This replaces the client password with a new generated password.</p>
+              <div>
+                <label className="text-xs tracking-widest opacity-50 mb-2 block">YOUR ADMIN PASSWORD</label>
+                <input type="password" autoComplete="current-password" value={adminPassword} onChange={(event) => setAdminPassword(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") revealClientPassword(); }} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-accent/50" />
+              </div>
+              <button onClick={revealClientPassword} disabled={resettingClientPassword || !adminPassword} className="w-full py-3 rounded-full bg-accent text-sm hover:bg-accent/90 disabled:opacity-50">{resettingClientPassword ? "Verifying..." : "Verify and generate password"}</button>
+            </div>
+          )}
+        </motion.div>
+      </motion.div>
+    )}
+  </AnimatePresence>
 
 
   {/* Edit Project Modal */}
@@ -5537,9 +5754,24 @@ useEffect(() => {
       </AnimatePresence>
 
 
-      {/* Vendor Access Modal */}
+      {/* Vendor consent: clients see this only until acceptance is saved. */}
       <AnimatePresence>
-        {showVendorModal && !vendorAgreed && (
+        {showVendorModal && isClientUser && vendorConsent === false && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onKeyDown={(event) => { if (event.key === "Escape" && !savingVendorConsent) handleVendorConsent(false); }} className="fixed inset-0 z-[80] flex items-center justify-center bg-black/80 p-4 backdrop-blur-md" role="dialog" aria-modal="true" aria-labelledby="vendor-consent-title">
+            <motion.section initial={{ opacity: 0, scale: 0.96, y: 12 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.96, y: 12 }} className="w-full max-w-md rounded-3xl border border-accent/25 bg-[#07100d] p-6 shadow-2xl shadow-black/50 sm:p-8">
+              <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl border border-accent/30 bg-accent/15"><Share2 className="h-6 w-6 text-accent" /></div>
+              <h2 id="vendor-consent-title" className="text-2xl">Allow vendor media access?</h2>
+              <p className="mt-3 text-sm leading-6 text-white/70">This lets you view the files that have been shared with your vendors. Your acceptance is saved to your project.</p>
+              <p className="mt-2 text-xs leading-5 text-white/45">Media remains the property of Midori Media and is intended for approved vendor use.</p>
+              <div className="mt-7 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end"><button onClick={() => handleVendorConsent(false)} disabled={savingVendorConsent} className="rounded-xl border border-white/10 px-4 py-2.5 text-sm hover:bg-white/5 disabled:opacity-50">Decline</button><button ref={vendorConsentAcceptRef} onClick={() => handleVendorConsent(true)} disabled={savingVendorConsent} className="rounded-xl bg-accent px-4 py-2.5 text-sm text-background hover:bg-accent/90 disabled:opacity-50">{savingVendorConsent ? "Saving…" : "Accept & continue"}</button></div>
+            </motion.section>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Legacy vendor access modal retained but unreachable; live consent UI is above. */}
+      <AnimatePresence>
+        {false && showVendorModal && !vendorAgreed && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}

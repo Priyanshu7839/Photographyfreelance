@@ -6,7 +6,6 @@ import ProjectDetail from "./pages/ProjectDetail";
 import WorkspaceGateway from "./pages/WorkspaceGateway";
 import ClientLogin from "./pages/ClientLogin";
 import TeamLogin from "./pages/TeamLogin";
-import AdminLogin from "./pages/AdminLogin";
 import WeddingPackageBuilder from "./pages/WeddingPackageBuilder";
 import ClientOnboarding from "./pages/ClientOnboarding";
 

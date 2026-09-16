@@ -1,4 +1,4 @@
-import React, { useState } from "react"
+import React, { useEffect, useState } from "react"
 import { motion ,AnimatePresence} from "motion/react";
 import { LogOut } from "lucide-react";
 import { Link, useNavigate } from "react-router";
@@ -10,9 +10,13 @@ import { toast } from "sonner";
 const Navbar = () => {
 
     const [showUserDropdown, setShowUserDropdown] = useState(false);
-    const user = JSON.parse(
-  localStorage.getItem("user") || "{}"
-);
+    const [user, setUser] = useState(() => JSON.parse(localStorage.getItem("user") || "{}"));
+    useEffect(() => {
+      const refresh = () => setUser(JSON.parse(localStorage.getItem("user") || "{}"));
+      window.addEventListener("storage", refresh);
+      window.addEventListener("midori:session-expired", refresh);
+      return () => { window.removeEventListener("storage", refresh); window.removeEventListener("midori:session-expired", refresh); };
+    }, []);
 
 const getInitials = (name) => {
   const words = name
@@ -40,6 +44,7 @@ const handleLogout =
       localStorage.removeItem(
         "user"
       );
+      window.dispatchEvent(new Event("midori:session-expired"));
 
       toast.success(
         "Logged out successfully"

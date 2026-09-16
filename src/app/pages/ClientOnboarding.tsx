@@ -711,12 +711,8 @@ const allAssignedMembers = teamMembers.filter((member) =>
           : selectedTemplate,
     };
 
-    console.log(payload);
-
     const response =
       await createClient(payload);
-
-    console.log(response);
 
 
 
@@ -897,7 +893,7 @@ useEffect(()=>{
                     />
                   </div>
                 </div>
- 
+
                 </div> */}
                 {/* Event Type */}
                 <div>

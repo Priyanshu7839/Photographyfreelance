@@ -29,6 +29,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { Link } from "react-router";
+import { submitEnquiry } from "../../Utils/Apicalls";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -235,6 +236,20 @@ const ADD_ONS: AddOn[] = [
 
 function fmt(n: number) {
   return "$" + n.toLocaleString("en-US");
+}
+
+const HOURLY_ADD_ON_IDS = new Set(["second-photo", "video-addon", "extra-time", "studio"]);
+function coverageHours(pkg: Package | null) {
+  if (!pkg) return 1;
+  const match = pkg.features.join(" ").match(/(\d+(?:\.\d+)?)\s*Hours?/i);
+  return match ? Number(match[1]) : 1;
+}
+function addOnTotal(ids: string[], pkg: Package | null) {
+  const hours = coverageHours(pkg);
+  return ids.reduce((sum, id) => {
+    const addOn = ADD_ONS.find((item) => item.id === id);
+    return sum + (addOn ? addOn.price * (HOURLY_ADD_ON_IDS.has(id) ? hours : 1) : 0);
+  }, 0);
 }
 
 function AnimatedNumber({ value }: { value: number }) {
@@ -458,7 +473,7 @@ function SummaryCard({
   onBook: () => void;
 }) {
   const basePrice = selectedPackage?.price ?? 0;
-  const addOnsTotal = addOns.reduce((sum, id) => sum + (ADD_ONS.find((a) => a.id === id)?.price ?? 0), 0);
+  const addOnsTotal = addOnTotal(addOns, selectedPackage);
   const total = basePrice + addOnsTotal;
 
   const selectedAddOns = addOns.map((id) => ADD_ONS.find((a) => a.id === id)!).filter(Boolean);
@@ -527,7 +542,7 @@ function SummaryCard({
               {selectedAddOns.map((a) => (
                 <div key={a.id} className="flex items-center justify-between">
                   <p className="text-sm text-white/50">{a.label}</p>
-                  <p className="text-sm text-white/50">{a.priceLabel}</p>
+                  <p className="text-sm text-white/50">{fmt(a.price * (HOURLY_ADD_ON_IDS.has(a.id) ? coverageHours(selectedPackage) : 1))}{HOURLY_ADD_ON_IDS.has(a.id) ? ` (${coverageHours(selectedPackage)} hr)` : ""}</p>
                 </div>
               ))}
             </div>
@@ -671,6 +686,8 @@ function BookingModal({
 }) {
   const [step, setStep] = useState(1);
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
   const [showCountryPicker, setShowCountryPicker] = useState(false);
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [submitAttempted, setSubmitAttempted] = useState(false);
@@ -731,9 +748,35 @@ function BookingModal({
     setStep((s) => s + 1);
   }
 
-  function handleSubmit() {
+  async function handleSubmit() {
     setSubmitAttempted(true);
-    setSubmitted(true);
+    if (!step1Valid || !step2Valid) return;
+    setSubmitting(true);
+    setSubmitError("");
+    try {
+      await submitEnquiry({
+        name: form.name,
+        email: form.email,
+        phone: `${form.countryCode} ${form.phone}`,
+        projectType: serviceType?.label,
+        projectScope: `${selectedPackage?.name || "Package"}${addOns.length ? `; add-ons: ${selectedAddOns.map((addOn) => addOn.label).join(", ")}` : ""}`,
+        packageName: selectedPackage?.name || "",
+        packageFeatures: selectedPackage?.features.join(", ") || "",
+        selectedAddOns: selectedAddOns.length
+          ? selectedAddOns.map((addOn) => `${addOn.label} (${fmt(addOn.price * (HOURLY_ADD_ON_IDS.has(addOn.id) ? coverageHours(selectedPackage) : 1))})`).join(", ")
+          : "None",
+        quoteTotal: fmt(total),
+        timeline: form.date,
+        vision: form.notes,
+        budget: fmt(total),
+        additionalDetails: `Location: ${form.location}`,
+      });
+      setSubmitted(true);
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : "Unable to send enquiry.");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   const inputBase =
@@ -1172,9 +1215,10 @@ function BookingModal({
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={handleSubmit}
-                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-accent text-white font-medium text-sm hover:bg-accent/90 shadow-lg shadow-accent/20 transition-all duration-200"
+                disabled={submitting}
+                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-accent text-white font-medium text-sm hover:bg-accent/90 shadow-lg shadow-accent/20 transition-all duration-200 disabled:opacity-60"
               >
-                Submit Request
+                {submitting ? "Sending..." : "Submit Request"}
                 <CheckCircle2 size={15} />
               </motion.button>
             )}
@@ -1192,6 +1236,7 @@ function BookingModal({
                 Please fix the errors above before continuing.
               </motion.p>
             )}
+            {submitError && <p className="text-xs text-red-400/70 text-center" role="alert">{submitError}</p>}
           </AnimatePresence>
         </div>
       </motion.div>
@@ -1300,7 +1345,7 @@ export default function WeddingPackageBuilder() {
 
   const total =
     (selectedPackage?.price ?? 0) +
-    selectedAddOns.reduce((sum, id) => sum + (ADD_ONS.find((a) => a.id === id)?.price ?? 0), 0);
+    addOnTotal(selectedAddOns, selectedPackage);
 
   function selectService(id: string) {
     if (id !== selectedServiceId) {

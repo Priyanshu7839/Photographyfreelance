@@ -102,9 +102,14 @@ const [loading, setLoading] =
 
 
 
-    const user = JSON.parse(
-  localStorage.getItem("user") || "{}"
-);
+  const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const isAdmin = user.role === "admin" || user.role === "superadmin";
+  const visibleClients = clients.filter((project) => {
+    const query = searchQuery.trim().toLowerCase();
+    return !query || [project.client_name, project.event_type, project.event_name, project.current_step]
+      .filter(Boolean)
+      .some((value) => String(value).toLowerCase().includes(query));
+  });
 
 
 
@@ -126,7 +131,7 @@ const [loading, setLoading] =
             <h1 className="text-4xl md:text-5xl lg:text-6xl mb-4 tracking-tight">Client Projects</h1>
             <p className="text-lg md:text-xl opacity-70">Manage workflows and track deliverables</p>
           </div>
-         {user.role && <Link
+         {isAdmin && <Link
             to="/onboarding"
             className="flex items-center gap-2 px-6 py-3.5 bg-accent rounded-full hover:bg-accent/90 shadow-lg shadow-accent/20 transition-all whitespace-nowrap"
           >
@@ -136,7 +141,7 @@ const [loading, setLoading] =
         </motion.div>
 
         {/* Search & Filters */}
-       {user.role && <motion.div
+       {isAdmin && <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
@@ -163,7 +168,7 @@ const [loading, setLoading] =
           transition={{ delay: 0.4 }}
           className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
         >
-          {clients?.map((project, index) => (
+          {visibleClients.map((project, index) => (
             <Link
               key={project.client_id}
               to={`/project/${project.client_id}`}
@@ -214,7 +219,7 @@ const [loading, setLoading] =
                               ? "bg-orange-400"
                               : "bg-accent/80"
                           }`}
-                          style={{ width: `${project.progress}%` }}
+                          style={{ width: `${project.progress_percentage || 0}%` }}
                         />
                       </div>
                     </div>
@@ -258,7 +263,7 @@ const [loading, setLoading] =
           ))}
         </motion.div>
 
-        {clients?.length === 0 && (
+        {visibleClients.length === 0 && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}

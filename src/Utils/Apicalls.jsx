@@ -6,6 +6,26 @@ const api = axios.create({
   withCredentials: true,
 });
 
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem("user");
+      window.dispatchEvent(new Event("midori:session-expired"));
+    }
+    return Promise.reject(error);
+  }
+);
+
+export const submitEnquiry = async (data) => {
+  try {
+    const response = await api.post("/upload/sendenquiry", data);
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || "Unable to send enquiry. Please try again.");
+  }
+};
+
 
 export const logout =
   async () => {
@@ -119,6 +139,15 @@ export const createClient = async (data) => {
       error.response?.data?.message ||
       "Failed to create client"
     );
+  }
+};
+
+export const resetClientPassword = async (clientId, adminPassword) => {
+  try {
+    const response = await api.post(`/client/${clientId}/reset-password`, { admin_password: adminPassword });
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || "Unable to reset client password");
   }
 };
 
@@ -399,7 +428,8 @@ export const addMoodboardDiscussion =
   export const assignGears =
   async (
     clientId,
-    gears_using
+    gears_using,
+    member_id
   ) => {
     try {
       const response =
@@ -407,6 +437,7 @@ export const addMoodboardDiscussion =
           `/project/${clientId}/assign-gears`,
           {
             gears_using,
+            member_id,
           }
         );
 
@@ -462,7 +493,7 @@ export const addMoodboardDiscussion =
 
   const CHUNK_SIZE = 10 * 1024 * 1024; 
 
-  export async function uploadMultipartFileClientassets(file, clientId, variantType,onProgress,vendorshared) {
+  export async function uploadMultipartFileClientassets(file, clientId, variantType,onProgress,vendorshared, vendorId = null) {
 console.log(file.name)
 console.log(file)
   try {
@@ -470,6 +501,8 @@ console.log(file)
     const startRes = await api.post("/upload/multipart/start", {
       fileName: file.name,
       fileType: file.type,
+      fileSize: file.size,
+      clientId,
     });
 
     const { uploadId, key } = startRes.data;
@@ -542,6 +575,7 @@ console.log(file)
       , mediaType:file.type.startsWith("video") ? "video" : "image"
       , variantType:variantType
       ,vendorshared :vendorshared
+      ,vendor_id: vendorshared ? vendorId : null
     });
 
     console.log(file.type.startsWith("video") ? "video" : "image")
@@ -590,6 +624,42 @@ export const clientLogin =
       );
     }
   };
+
+export const getVendors = async (clientId) => {
+  try {
+    const response = await api.get(`/vendor/${clientId}`);
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || "Failed to fetch vendors");
+  }
+};
+
+export const createVendor = async (clientId, vendor) => {
+  try {
+    const response = await api.post(`/vendor/${clientId}`, vendor);
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || "Unable to create vendor");
+  }
+};
+
+export const getVendorMedia = async (clientId) => {
+  try {
+    const response = await api.get(`/vendor/${clientId}/media`);
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || "Failed to fetch vendor media");
+  }
+};
+
+export const updateVendorMediaConsent = async (clientId, accepted) => {
+  try {
+    const response = await api.put(`/vendor/${clientId}/consent`, { accepted });
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || "Unable to save your consent");
+  }
+};
 
   export const getClientAssets =
   async (

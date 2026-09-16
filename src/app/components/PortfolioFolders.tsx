@@ -279,16 +279,6 @@ const fetchHomepageFolders =
 
   useEffect(() => {
   fetchHomepageFolders();
-
-  const interval =
-    setInterval(() => {
-      fetchHomepageFolders();
-    }, 5000);
-
-  return () =>
-    clearInterval(
-      interval
-    );
 }, []);
   const [
   folderImages,
