@@ -1,8 +1,8 @@
 import axios from "axios";
 
 const api = axios.create({
-  // baseURL: "http://localhost:8002",
-  baseURL: "https://photographyfreelancebackend.onrender.com",
+  baseURL: "http://localhost:8002",
+  // baseURL: "https://photographyfreelancebackend.onrender.com",
   withCredentials: true,
 });
 
@@ -982,7 +982,7 @@ export const getProjectStepsForTravel =
   };
 
 
-  export const updateProjectStepTravel =
+export const updateProjectStepTravel =
   async (
     clientId,
     projectStepId,
@@ -996,6 +996,15 @@ export const getProjectStepsForTravel =
 
     return data;
   };
+
+export const updateTravelConfig = async (clientId, body) => {
+  try {
+    const { data } = await api.put(`project/travel/${clientId}/config`, body);
+    return data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || "Unable to update travel pricing settings");
+  }
+};
 
 
   export const createMember = async ( {

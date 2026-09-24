@@ -99,6 +99,7 @@ import {
   updateInvoiceItems,
   updateProjectStep,
   updateProjectStepTravel,
+  updateTravelConfig,
   updateWorkflowStatus,
   uploadMultipartFileClientassets,
 } from "../../Utils/Apicalls";
@@ -671,6 +672,7 @@ const user = JSON.parse(
 );
 const isClientUser = user.role === "client" || user.user_type === "client";
 const isAdminUser = user.role === "admin" || user.role === "superadmin";
+const canManageTravel = user.user_type === "member";
 
 
 
@@ -1011,18 +1013,21 @@ const [
   const fetchTravelData =
   async () => {
     try {
+      setTravelDataLoading(true);
       const response =
         await getProjectStepsForTravel(
           clientId
         );
 
-        console.log(response.data)
-
       setTravelData(
         response.data
       );
+      setTravelConfig((current) => ({ ...current, ...(response.travel_config || {}) }));
     } catch (error) {
-      console.error(error);
+      toast.error(error.message || "Unable to load travel information.");
+      setTravelData([]);
+    } finally {
+      setTravelDataLoading(false);
     }
   };
 
@@ -1061,6 +1066,21 @@ const [
         ?.message ||
         "Failed to update travel information."
     );
+  }
+};
+
+const handleUpdateTravelConfig = async (settings) => {
+  try {
+    const response = await updateTravelConfig(clientId, {
+      free_allowance_miles: settings.freeAllowanceMiles,
+      rate_per_mile: settings.ratePerMile,
+    });
+    setTravelConfig((current) => ({ ...current, ...response.data }));
+    await fetchTravelData();
+    await fetchInvoices();
+    toast.success("Travel pricing settings updated");
+  } catch (error) {
+    toast.error(error.message || "Unable to update travel pricing settings.");
   }
 };
 
@@ -4154,7 +4174,11 @@ useEffect(() => {
                         </div>
 
                         {/* Rows */}
-                        {travelData?.map((loc, idx) => {
+                        {travelDataLoading ? (
+                          <div className="px-5 py-8 text-center text-sm text-white/50">Loading travel locations…</div>
+                        ) : (travelData || []).length === 0 ? (
+                          <div className="px-5 py-8 text-center text-sm text-white/50">No project steps have travel locations yet.</div>
+                        ) : (travelData || []).map((loc, idx) => {
                           const isEditing = editingTravelRow === loc.project_step_id;
                           return (
                             <div
@@ -4237,8 +4261,7 @@ useEffect(() => {
                                   </div>
                                   {/* Edit button (on hover) */}
                                   <div className="py-4 flex items-center justify-center">
-                                    
-                                      <button
+                                    {canManageTravel && <button
                                         onClick={() => {
                                           setEditingTravelRow(loc.project_step_id);
                                           setTravelRowDraft({ venue: loc.venue, travel_distance: String(loc.travel_distance) });
@@ -4247,14 +4270,13 @@ useEffect(() => {
                                         title="Edit"
                                       >
                                         <Pencil className="w-3.5 h-3.5" />
-                                      </button>
-                                  
+                                      </button>}
                                   </div>
                                 </>
                               )}
                             </div>
                           );
-                        })}
+                          })}
 
                         {/* Total row */}
                         <div className="grid grid-cols-[1fr_160px_120px_48px] gap-0 px-5 py-3.5 bg-white/[0.03] border-t border-white/10">
@@ -4286,7 +4308,7 @@ useEffect(() => {
                                     defaultValue={travelConfig.freeAllowanceMiles}
                                     onBlur={(e) => {
                                       const v = parseFloat(e.target.value);
-                                      if (!isNaN(v)) setTravelConfig(c => ({ ...c, freeAllowanceMiles: Math.max(0, v) }));
+                                      if (!isNaN(v)) handleUpdateTravelConfig({ ...travelConfig, freeAllowanceMiles: Math.max(0, v) });
                                       setEditingTravelSetting(null);
                                     }}
                                     onKeyDown={(e) => {
@@ -4302,7 +4324,7 @@ useEffect(() => {
                               )}
                               <p className="text-xs opacity-30 mt-1.5">No charge up to this distance</p>
                             </div>
-                            {editingTravelSetting !== "freeAllowance" && (
+                            {canManageTravel && editingTravelSetting !== "freeAllowance" && (
                               <button
                                 onClick={() => setEditingTravelSetting("freeAllowance")}
                                 className="opacity-0 group-hover:opacity-50 hover:!opacity-100 w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/10 transition-all"
@@ -4329,7 +4351,7 @@ useEffect(() => {
                                     defaultValue={travelConfig.ratePerMile}
                                     onBlur={(e) => {
                                       const v = parseFloat(e.target.value);
-                                      if (!isNaN(v)) setTravelConfig(c => ({ ...c, ratePerMile: Math.max(0, parseFloat(v.toFixed(2))) }));
+                                      if (!isNaN(v)) handleUpdateTravelConfig({ ...travelConfig, ratePerMile: Math.max(0, parseFloat(v.toFixed(2))) });
                                       setEditingTravelSetting(null);
                                     }}
                                     onKeyDown={(e) => {
@@ -4345,7 +4367,7 @@ useEffect(() => {
                               )}
                               <p className="text-xs opacity-30 mt-1.5">Applied to billable miles</p>
                             </div>
-                            {editingTravelSetting !== "rate" && (
+                            {canManageTravel && editingTravelSetting !== "rate" && (
                               <button
                                 onClick={() => setEditingTravelSetting("rate")}
                                 className="opacity-0 group-hover:opacity-50 hover:!opacity-100 w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/10 transition-all"
